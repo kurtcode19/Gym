@@ -1,4 +1,4 @@
-// lib/providers/database_helper.dart - UPDATED CONTENT
+// lib/providers/database_helper.dart - FURTHER UPDATED CONTENT
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -21,7 +21,7 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'jays_fitness_gym.db');
+    String path = join(await getDatabasesPath(), 'gym.db');
     return await openDatabase(
       path,
       version: 1,
@@ -221,7 +221,7 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getCustomers() async {
     final db = await database;
-    return await db.query('CUSTOMER');
+    return await db.query('CUSTOMER', orderBy: 'last_name, first_name');
   }
 
   Future<int> updateCustomer(Map<String, dynamic> customer) async {
@@ -251,7 +251,7 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getMembershipPlans() async {
     final db = await database;
-    return await db.query('MEMBERSHIP_PLAN');
+    return await db.query('MEMBERSHIP_PLAN', orderBy: 'plan_name');
   }
 
   Future<int> updateMembershipPlan(Map<String, dynamic> plan) async {
@@ -284,7 +284,6 @@ class DatabaseHelper {
     return await db.query('MEMBERSHIP');
   }
 
-  // Get memberships with joined customer and plan details for richer display
   Future<List<Map<String, dynamic>>> getDetailedMemberships() async {
     final db = await database;
     return await db.rawQuery('''
@@ -318,6 +317,160 @@ class DatabaseHelper {
       'MEMBERSHIP',
       where: 'membership_id = ?',
       whereArgs: [membershipId],
+    );
+  }
+
+  // --- CRUD Methods for ATTENDANCE Table ---
+  Future<int> insertAttendance(Map<String, dynamic> attendance) async {
+    final db = await database;
+    return await db.insert('ATTENDANCE', attendance, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getAttendanceRecords() async {
+    final db = await database;
+    // Join with CUSTOMER to get member names
+    return await db.rawQuery('''
+      SELECT
+        A.*,
+        C.first_name AS customer_first_name,
+        C.last_name AS customer_last_name
+      FROM ATTENDANCE A
+      INNER JOIN CUSTOMER C ON A.member_id = C.customer_id
+      ORDER BY A.checkin_time DESC
+    ''');
+  }
+
+  Future<int> updateAttendance(Map<String, dynamic> attendance) async {
+    final db = await database;
+    return await db.update(
+      'ATTENDANCE',
+      attendance,
+      where: 'attendance_id = ?',
+      whereArgs: [attendance['attendance_id']],
+    );
+  }
+
+  Future<int> deleteAttendance(String attendanceId) async {
+    final db = await database;
+    return await db.delete(
+      'ATTENDANCE',
+      where: 'attendance_id = ?',
+      whereArgs: [attendanceId],
+    );
+  }
+
+  // --- CRUD Methods for TRAINER Table ---
+  Future<int> insertTrainer(Map<String, dynamic> trainer) async {
+    final db = await database;
+    return await db.insert('TRAINER', trainer, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getTrainers() async {
+    final db = await database;
+    return await db.query('TRAINER', orderBy: 'last_name, first_name');
+  }
+
+  Future<int> updateTrainer(Map<String, dynamic> trainer) async {
+    final db = await database;
+    return await db.update(
+      'TRAINER',
+      trainer,
+      where: 'trainer_id = ?',
+      whereArgs: [trainer['trainer_id']],
+    );
+  }
+
+  Future<int> deleteTrainer(String trainerId) async {
+    final db = await database;
+    return await db.delete(
+      'TRAINER',
+      where: 'trainer_id = ?',
+      whereArgs: [trainerId],
+    );
+  }
+
+  // --- CRUD Methods for CLASS Table ---
+  Future<int> insertGymClass(Map<String, dynamic> gymClass) async {
+    final db = await database;
+    return await db.insert('CLASS', gymClass, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getGymClasses() async {
+    final db = await database;
+    // Join with TRAINER to get trainer name
+    return await db.rawQuery('''
+      SELECT
+        CL.*,
+        T.first_name AS trainer_first_name,
+        T.last_name AS trainer_last_name
+      FROM CLASS CL
+      LEFT JOIN TRAINER T ON CL.trainer_id = T.trainer_id
+      ORDER BY CL.schedule_time DESC
+    ''');
+  }
+
+  Future<int> updateGymClass(Map<String, dynamic> gymClass) async {
+    final db = await database;
+    return await db.update(
+      'CLASS',
+      gymClass,
+      where: 'class_id = ?',
+      whereArgs: [gymClass['class_id']],
+    );
+  }
+
+  Future<int> deleteGymClass(String classId) async {
+    final db = await database;
+    return await db.delete(
+      'CLASS',
+      where: 'class_id = ?',
+      whereArgs: [classId],
+    );
+  }
+
+  // --- CRUD Methods for CLASS_BOOKING Table ---
+  Future<int> insertClassBooking(Map<String, dynamic> booking) async {
+    final db = await database;
+    return await db.insert('CLASS_BOOKING', booking, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getClassBookings() async {
+    final db = await database;
+    // Join with CUSTOMER and CLASS to get detailed booking info
+    return await db.rawQuery('''
+      SELECT
+        CB.*,
+        C.first_name AS customer_first_name,
+        C.last_name AS customer_last_name,
+        CL.class_name AS class_name,
+        CL.schedule_time AS class_schedule_time,
+        CL.duration_minutes AS class_duration_minutes,
+        T.first_name AS trainer_first_name,
+        T.last_name AS trainer_last_name
+      FROM CLASS_BOOKING CB
+      INNER JOIN CUSTOMER C ON CB.customer_id = C.customer_id
+      INNER JOIN CLASS CL ON CB.class_id = CL.class_id
+      LEFT JOIN TRAINER T ON CL.trainer_id = T.trainer_id
+      ORDER BY CL.schedule_time DESC, C.last_name, C.first_name
+    ''');
+  }
+
+  Future<int> updateClassBooking(Map<String, dynamic> booking) async {
+    final db = await database;
+    return await db.update(
+      'CLASS_BOOKING',
+      booking,
+      where: 'booking_id = ?',
+      whereArgs: [booking['booking_id']],
+    );
+  }
+
+  Future<int> deleteClassBooking(String bookingId) async {
+    final db = await database;
+    return await db.delete(
+      'CLASS_BOOKING',
+      where: 'booking_id = ?',
+      whereArgs: [bookingId],
     );
   }
 }
