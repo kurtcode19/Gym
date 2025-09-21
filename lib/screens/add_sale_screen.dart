@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart'; // For generating item IDs
+import 'package:uuid/uuid.dart';
 
 import 'package:gym/models/sale.dart';
 import 'package:gym/models/sale_item.dart';
@@ -14,7 +14,7 @@ import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/product_provider.dart';
 
 class AddSaleScreen extends StatefulWidget {
-  final DetailedSale? detailedSale; // Optional: for editing existing sale
+  final DetailedSale? detailedSale;
 
   const AddSaleScreen({super.key, this.detailedSale});
 
@@ -24,9 +24,11 @@ class AddSaleScreen extends StatefulWidget {
 
 class _AddSaleScreenState extends State<AddSaleScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
-  List<SaleItem> _currentSaleItems = []; // Local state for items
+  List<SaleItem> _currentSaleItems = [];
   double _totalAmount = 0.0;
   String? _selectedCustomerId;
+  String? _selectedProductId; // Moved to state
+  final TextEditingController _quantityController = TextEditingController(text: '1');
 
   @override
   void initState() {
@@ -38,6 +40,12 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     _calculateTotal();
   }
 
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    super.dispose();
+  }
+
   void _calculateTotal() {
     double total = 0.0;
     for (var item in _currentSaleItems) {
@@ -46,7 +54,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     setState(() {
       _totalAmount = total;
     });
-    // Update the form field for total_amount as well if it exists
     _formKey.currentState?.fields['total_amount']?.didChange(_totalAmount.toStringAsFixed(2));
   }
 
@@ -71,11 +78,9 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
       return;
     }
 
-    // Check if product already in list, if so, update quantity
     int existingIndex = _currentSaleItems.indexWhere((item) => item.productId == selectedProduct.productId);
     if (existingIndex != -1) {
       SaleItem existingItem = _currentSaleItems[existingIndex];
-      // Ensure combined quantity does not exceed stock
       if (selectedProduct.stockQuantity < (existingItem.quantity + quantity)) {
          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Adding ${selectedProduct.productName} would exceed available stock.')),
@@ -88,16 +93,15 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     } else {
       setState(() {
         _currentSaleItems.add(SaleItem(
-          saleId: widget.detailedSale?.sale.saleId ?? const Uuid().v4(), // Placeholder saleId, will be overwritten on save
+          saleId: widget.detailedSale?.sale.saleId ?? const Uuid().v4(),
           productId: selectedProduct.productId,
           quantity: quantity,
-          unitPrice: selectedProduct.unitPrice, // Use current product price
+          unitPrice: selectedProduct.unitPrice,
         ));
       });
     }
     _calculateTotal();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +120,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     } else {
       initialValues = {
         'sale_date': DateTime.now(),
-        'payment_method': 'Cash', // Default
+        'payment_method': 'Cash',
         'total_amount': '0.00',
       };
     }
@@ -130,10 +134,9 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
         child: FormBuilder(
           key: _formKey,
           initialValue: initialValues,
-          enabled: !customerProvider.isLoading && !productProvider.isLoading, // Disable form if data is loading
+          enabled: !customerProvider.isLoading && !productProvider.isLoading,
           child: ListView(
             children: [
-              // Customer Selection
               FormBuilderDropdown<String>(
                 name: 'customer_id',
                 decoration: const InputDecoration(labelText: 'Customer'),
@@ -151,7 +154,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                     .toList(),
               ),
               const SizedBox(height: 16),
-              // Sale Date
               FormBuilderDateTimePicker(
                 name: 'sale_date',
                 decoration: const InputDecoration(labelText: 'Sale Date'),
@@ -160,10 +162,9 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                 validator: (value) => value == null ? 'Sale date cannot be empty' : null,
               ),
               const SizedBox(height: 16),
-              // Add Products to Sale
+              // Fixed Add Product Section
               _buildAddProductSection(context, productProvider),
               const SizedBox(height: 16),
-              // List of Added Items
               if (_currentSaleItems.isNotEmpty)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,8 +174,17 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                     ..._currentSaleItems.asMap().entries.map((entry) {
                       final itemIndex = entry.key;
                       final item = entry.value;
-                      final product = productProvider.products.firstWhere((p) => p.product.productId == item.productId,
-                          orElse: () => DetailedProduct(product: Product(productId: '', productName: 'Unknown Product', unitPrice: 0, stockQuantity: 0))); // Fallback for deleted products
+                      final product = productProvider.products.firstWhere(
+                        (p) => p.product.productId == item.productId,
+                        orElse: () => DetailedProduct(
+                          product: Product(
+                            productId: '', 
+                            productName: 'Unknown Product', 
+                            unitPrice: 0, 
+                            stockQuantity: 0
+                          )
+                        )
+                      );
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
@@ -191,7 +201,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                     const Divider(),
                   ],
                 ),
-              // Total Amount (read-only)
               FormBuilderTextField(
                 name: 'total_amount',
                 decoration: const InputDecoration(labelText: 'Total Amount (\$)', enabled: false),
@@ -200,7 +209,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                 validator: (value) => _totalAmount <= 0 && _currentSaleItems.isEmpty ? 'Sale cannot be empty' : null,
               ),
               const SizedBox(height: 16),
-              // Payment Method
               FormBuilderDropdown<String>(
                 name: 'payment_method',
                 decoration: const InputDecoration(labelText: 'Payment Method'),
@@ -215,7 +223,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () async {
-                  if (_formKey.currentState?.saveAndValidate() ?? false && _currentSaleItems.isNotEmpty) {
+                  if (_formKey.currentState?.saveAndValidate() ?? false) {
                     final data = _formKey.currentState!.value;
                     final saleId = isEditing ? widget.detailedSale!.sale.saleId : const Uuid().v4();
 
@@ -227,7 +235,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                       paymentMethod: data['payment_method'],
                     );
 
-                    // Update SaleItems with the correct saleId before saving
                     final finalSaleItems = _currentSaleItems.map((item) => item.copyWith(saleId: saleId)).toList();
 
                     if (isEditing) {
@@ -261,9 +268,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   }
 
   Widget _buildAddProductSection(BuildContext context, ProductProvider productProvider) {
-    String? selectedProductId;
-    TextEditingController quantityController = TextEditingController(text: '1');
-
     return Card(
       elevation: 2,
       child: Padding(
@@ -273,10 +277,10 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
           children: [
             Text('Add Products', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
-            // Product selection
+            // Fixed DropdownButtonFormField
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Select Product'),
-              value: selectedProductId,
+              value: _selectedProductId, // Use value instead of initialValue
               items: productProvider.products
                   .where((p) => p.product.status == 'Available' && p.product.stockQuantity > 0)
                   .map((p) => DropdownMenuItem(
@@ -286,7 +290,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                   .toList(),
               onChanged: (value) {
                 setState(() {
-                  selectedProductId = value;
+                  _selectedProductId = value;
                 });
               },
             ),
@@ -295,12 +299,12 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: quantityController,
+                    controller: _quantityController,
                     decoration: const InputDecoration(labelText: 'Quantity', hintText: '1'),
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
                       if (int.tryParse(value) == null && value.isNotEmpty) {
-                         quantityController.text = '1'; // Reset if invalid
+                         _quantityController.text = '1';
                       }
                     },
                   ),
@@ -308,13 +312,15 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () {
-                    if (selectedProductId != null) {
-                      final product = productProvider.products.firstWhere((p) => p.product.productId == selectedProductId).product;
-                      final quantity = int.tryParse(quantityController.text) ?? 1;
+                    if (_selectedProductId != null) {
+                      final product = productProvider.products
+                          .firstWhere((p) => p.product.productId == _selectedProductId)
+                          .product;
+                      final quantity = int.tryParse(_quantityController.text) ?? 1;
                       _addSaleItem(product, quantity);
-                      quantityController.text = '1'; // Reset quantity
+                      _quantityController.text = '1';
                       setState(() {
-                        selectedProductId = null; // Clear selected product
+                        _selectedProductId = null;
                       });
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(

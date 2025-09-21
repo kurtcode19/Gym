@@ -93,51 +93,55 @@ class SaleProvider with ChangeNotifier {
   }
 
   // This method will handle inserting a new sale and its associated items as a transaction
-  Future<void> addSale(Sale sale, List<SaleItem> items) async {
-    final db = await _dbHelper.database;
-    await db.transaction((txn) async {
-      try {
-        await txn.insert('SALE', sale.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
-        for (var item in items) {
-          await txn.insert('SALE_ITEM', item.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
-        }
-        await fetchSales(); // Re-fetch all to update the list
-      } catch (e) {
-        print('Transaction failed to add sale: $e');
-        // Rethrow or handle error appropriately
+Future<void> addSale(Sale sale, List<SaleItem> items) async {
+  final db = await _dbHelper.database;
+  await db.transaction((txn) async {
+    try {
+      await txn.insert('SALE', sale.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
+      for (var item in items) {
+        await txn.insert('SALE_ITEM', item.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
       }
-    });
-  }
+      // REMOVE THIS: await fetchSales(); // Don't call fetchSales inside transaction
+    } catch (e) {
+      print('Transaction failed to add sale: $e');
+      rethrow; // Important: rethrow to let the transaction know it failed
+    }
+  });
+  
+  // Call fetchSales AFTER the transaction completes
+  await fetchSales();
+}
 
-  // This method will handle updating a sale and its associated items as a transaction
-  Future<void> updateSale(Sale sale, List<SaleItem> newItems) async {
-    final db = await _dbHelper.database;
-    await db.transaction((txn) async {
-      try {
-        await txn.update(
-          'SALE',
-          sale.toJson(),
-          where: 'sale_id = ?',
-          whereArgs: [sale.saleId],
-        );
+Future<void> updateSale(Sale sale, List<SaleItem> newItems) async {
+  final db = await _dbHelper.database;
+  await db.transaction((txn) async {
+    try {
+      await txn.update(
+        'SALE',
+        sale.toJson(),
+        where: 'sale_id = ?',
+        whereArgs: [sale.saleId],
+      );
 
-        // Delete old items and insert new ones
-        await txn.delete(
-          'SALE_ITEM',
-          where: 'sale_id = ?',
-          whereArgs: [sale.saleId],
-        );
-        for (var item in newItems) {
-          await txn.insert('SALE_ITEM', item.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
-        }
-        await fetchSales(); // Re-fetch all to update the list
-      } catch (e) {
-        print('Transaction failed to update sale: $e');
-        // Rethrow or handle error appropriately
+      // Delete old items and insert new ones
+      await txn.delete(
+        'SALE_ITEM',
+        where: 'sale_id = ?',
+        whereArgs: [sale.saleId],
+      );
+      for (var item in newItems) {
+        await txn.insert('SALE_ITEM', item.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
       }
-    });
-  }
-
+      // REMOVE THIS: await fetchSales(); // Don't call fetchSales inside transaction
+    } catch (e) {
+      print('Transaction failed to update sale: $e');
+      rethrow; // Important: rethrow to let the transaction know it failed
+    }
+  });
+  
+  // Call fetchSales AFTER the transaction completes
+  await fetchSales();
+}
   // Delete a sale and its associated items (CASCADE in DB schema should handle items)
   Future<void> deleteSale(String saleId) async {
     try {
