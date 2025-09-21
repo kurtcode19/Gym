@@ -52,7 +52,7 @@ class ClassProvider with ChangeNotifier {
   Future<void> fetchGymClasses() async {
     _setLoading(true);
     try {
-      final classMaps = await _dbHelper.getGymClasses();
+      final classMaps = await _dbHelper.getClasses();
       _classes = classMaps.map((map) => DetailedGymClass.fromMap(map)).toList();
       _filteredClasses = List.from(_classes);
     } catch (e) {
@@ -64,7 +64,7 @@ class ClassProvider with ChangeNotifier {
 
   Future<void> addGymClass(GymClass gymClass) async {
     try {
-      await _dbHelper.insertGymClass(gymClass.toJson());
+      await _dbHelper.insertClass(gymClass.toJson());
       await fetchGymClasses(); // Re-fetch to update detailed view
     } catch (e) {
       print('Error adding gym class: $e');
@@ -73,7 +73,7 @@ class ClassProvider with ChangeNotifier {
 
   Future<void> updateGymClass(GymClass gymClass) async {
     try {
-      await _dbHelper.updateGymClass(gymClass.toJson());
+      await _dbHelper.updateClass(gymClass.toJson());
       await fetchGymClasses(); // Re-fetch to update detailed view
     } catch (e) {
       print('Error updating gym class: $e');
@@ -82,7 +82,7 @@ class ClassProvider with ChangeNotifier {
 
   Future<void> deleteGymClass(String classId) async {
     try {
-      await _dbHelper.deleteGymClass(classId);
+      await _dbHelper.deleteClass(classId);
       _classes.removeWhere((c) => c.gymClass.classId == classId);
       _filteredClasses.removeWhere((c) => c.gymClass.classId == classId);
       notifyListeners();

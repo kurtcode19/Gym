@@ -1,4 +1,4 @@
-// lib/providers/database_helper.dart - FURTHER UPDATED CONTENT
+// lib/providers/database_helper.dart - UPDATED CONTENT
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -24,7 +24,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'gym.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 1, // Keep version 1 for now unless schema changes.
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -207,10 +207,7 @@ class DatabaseHelper {
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     print('Database upgraded from version $oldVersion to $newVersion');
-    // Example: If you add a new column in a future version:
-    // if (oldVersion < 2) {
-    //   await db.execute("ALTER TABLE CUSTOMER ADD COLUMN new_column TEXT;");
-    // }
+    // Implement migration logic if future schema changes are introduced
   }
 
   // --- CRUD Methods for CUSTOMER Table ---
@@ -300,7 +297,6 @@ class DatabaseHelper {
     ''');
   }
 
-
   Future<int> updateMembership(Map<String, dynamic> membership) async {
     final db = await database;
     return await db.update(
@@ -317,45 +313,6 @@ class DatabaseHelper {
       'MEMBERSHIP',
       where: 'membership_id = ?',
       whereArgs: [membershipId],
-    );
-  }
-
-  // --- CRUD Methods for ATTENDANCE Table ---
-  Future<int> insertAttendance(Map<String, dynamic> attendance) async {
-    final db = await database;
-    return await db.insert('ATTENDANCE', attendance, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  Future<List<Map<String, dynamic>>> getAttendanceRecords() async {
-    final db = await database;
-    // Join with CUSTOMER to get member names
-    return await db.rawQuery('''
-      SELECT
-        A.*,
-        C.first_name AS customer_first_name,
-        C.last_name AS customer_last_name
-      FROM ATTENDANCE A
-      INNER JOIN CUSTOMER C ON A.member_id = C.customer_id
-      ORDER BY A.checkin_time DESC
-    ''');
-  }
-
-  Future<int> updateAttendance(Map<String, dynamic> attendance) async {
-    final db = await database;
-    return await db.update(
-      'ATTENDANCE',
-      attendance,
-      where: 'attendance_id = ?',
-      whereArgs: [attendance['attendance_id']],
-    );
-  }
-
-  Future<int> deleteAttendance(String attendanceId) async {
-    final db = await database;
-    return await db.delete(
-      'ATTENDANCE',
-      where: 'attendance_id = ?',
-      whereArgs: [attendanceId],
     );
   }
 
@@ -390,14 +347,18 @@ class DatabaseHelper {
   }
 
   // --- CRUD Methods for CLASS Table ---
-  Future<int> insertGymClass(Map<String, dynamic> gymClass) async {
+  Future<int> insertClass(Map<String, dynamic> classData) async {
     final db = await database;
-    return await db.insert('CLASS', gymClass, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('CLASS', classData, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<List<Map<String, dynamic>>> getGymClasses() async {
+  Future<List<Map<String, dynamic>>> getClasses() async {
     final db = await database;
-    // Join with TRAINER to get trainer name
+    return await db.query('CLASS', orderBy: 'schedule_time DESC');
+  }
+
+  Future<List<Map<String, dynamic>>> getDetailedClasses() async {
+    final db = await database;
     return await db.rawQuery('''
       SELECT
         CL.*,
@@ -409,17 +370,17 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<int> updateGymClass(Map<String, dynamic> gymClass) async {
+  Future<int> updateClass(Map<String, dynamic> classData) async {
     final db = await database;
     return await db.update(
       'CLASS',
-      gymClass,
+      classData,
       where: 'class_id = ?',
-      whereArgs: [gymClass['class_id']],
+      whereArgs: [classData['class_id']],
     );
   }
 
-  Future<int> deleteGymClass(String classId) async {
+  Future<int> deleteClass(String classId) async {
     final db = await database;
     return await db.delete(
       'CLASS',
@@ -436,7 +397,11 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getClassBookings() async {
     final db = await database;
-    // Join with CUSTOMER and CLASS to get detailed booking info
+    return await db.query('CLASS_BOOKING', orderBy: 'booking_date DESC');
+  }
+
+  Future<List<Map<String, dynamic>>> getDetailedClassBookings() async {
+    final db = await database;
     return await db.rawQuery('''
       SELECT
         CB.*,
@@ -444,16 +409,16 @@ class DatabaseHelper {
         C.last_name AS customer_last_name,
         CL.class_name AS class_name,
         CL.schedule_time AS class_schedule_time,
-        CL.duration_minutes AS class_duration_minutes,
         T.first_name AS trainer_first_name,
         T.last_name AS trainer_last_name
       FROM CLASS_BOOKING CB
       INNER JOIN CUSTOMER C ON CB.customer_id = C.customer_id
       INNER JOIN CLASS CL ON CB.class_id = CL.class_id
       LEFT JOIN TRAINER T ON CL.trainer_id = T.trainer_id
-      ORDER BY CL.schedule_time DESC, C.last_name, C.first_name
+      ORDER BY CL.schedule_time DESC, C.last_name
     ''');
   }
+
 
   Future<int> updateClassBooking(Map<String, dynamic> booking) async {
     final db = await database;
@@ -471,6 +436,269 @@ class DatabaseHelper {
       'CLASS_BOOKING',
       where: 'booking_id = ?',
       whereArgs: [bookingId],
+    );
+  }
+
+  // --- CRUD Methods for PRODUCT_CATEGORY Table ---
+  Future<int> insertProductCategory(Map<String, dynamic> category) async {
+    final db = await database;
+    return await db.insert('PRODUCT_CATEGORY', category, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getProductCategories() async {
+    final db = await database;
+    return await db.query('PRODUCT_CATEGORY', orderBy: 'category_name');
+  }
+
+  Future<int> updateProductCategory(Map<String, dynamic> category) async {
+    final db = await database;
+    return await db.update(
+      'PRODUCT_CATEGORY',
+      category,
+      where: 'category_id = ?',
+      whereArgs: [category['category_id']],
+    );
+  }
+
+  Future<int> deleteProductCategory(String categoryId) async {
+    final db = await database;
+    return await db.delete(
+      'PRODUCT_CATEGORY',
+      where: 'category_id = ?',
+      whereArgs: [categoryId],
+    );
+  }
+
+  // --- CRUD Methods for PRODUCT Table ---
+  Future<int> insertProduct(Map<String, dynamic> product) async {
+    final db = await database;
+    return await db.insert('PRODUCT', product, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getProducts() async {
+    final db = await database;
+    return await db.query('PRODUCT', orderBy: 'product_name');
+  }
+
+  Future<List<Map<String, dynamic>>> getDetailedProducts() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        P.*,
+        PC.category_name AS category_name
+      FROM PRODUCT P
+      LEFT JOIN PRODUCT_CATEGORY PC ON P.category_id = PC.category_id
+      ORDER BY P.product_name
+    ''');
+  }
+
+  Future<int> updateProduct(Map<String, dynamic> product) async {
+    final db = await database;
+    return await db.update(
+      'PRODUCT',
+      product,
+      where: 'product_id = ?',
+      whereArgs: [product['product_id']],
+    );
+  }
+
+  Future<int> deleteProduct(String productId) async {
+    final db = await database;
+    return await db.delete(
+      'PRODUCT',
+      where: 'product_id = ?',
+      whereArgs: [productId],
+    );
+  }
+
+  // --- CRUD Methods for SALE Table ---
+  Future<String> insertSale(Map<String, dynamic> sale) async {
+    final db = await database;
+    await db.insert('SALE', sale, conflictAlgorithm: ConflictAlgorithm.replace);
+    return sale['sale_id']; // Return the ID of the inserted sale
+  }
+
+  Future<List<Map<String, dynamic>>> getSales() async {
+    final db = await database;
+    return await db.query('SALE', orderBy: 'sale_date DESC');
+  }
+
+  // Get sales with joined customer details
+  Future<List<Map<String, dynamic>>> getDetailedSales() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        S.*,
+        C.first_name AS customer_first_name,
+        C.last_name AS customer_last_name
+      FROM SALE S
+      INNER JOIN CUSTOMER C ON S.customer_id = C.customer_id
+      ORDER BY S.sale_date DESC
+    ''');
+  }
+
+  Future<int> updateSale(Map<String, dynamic> sale) async {
+    final db = await database;
+    return await db.update(
+      'SALE',
+      sale,
+      where: 'sale_id = ?',
+      whereArgs: [sale['sale_id']],
+    );
+  }
+
+  Future<int> deleteSale(String saleId) async {
+    final db = await database;
+    return await db.delete(
+      'SALE',
+      where: 'sale_id = ?',
+      whereArgs: [saleId],
+    );
+  }
+
+  // --- CRUD Methods for SALE_ITEM Table ---
+  Future<int> insertSaleItem(Map<String, dynamic> saleItem) async {
+    final db = await database;
+    return await db.insert('SALE_ITEM', saleItem, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getSaleItemsForSale(String saleId) async {
+    final db = await database;
+    return await db.query('SALE_ITEM', where: 'sale_id = ?', whereArgs: [saleId]);
+  }
+
+  // Get sale items for a specific sale, with joined product details
+  Future<List<Map<String, dynamic>>> getDetailedSaleItemsForSale(String saleId) async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        SI.*,
+        P.product_name AS product_name,
+        P.description AS product_description
+      FROM SALE_ITEM SI
+      INNER JOIN PRODUCT P ON SI.product_id = P.product_id
+      WHERE SI.sale_id = ?
+      ORDER BY P.product_name
+    ''', [saleId]);
+  }
+
+  Future<int> updateSaleItem(Map<String, dynamic> saleItem) async {
+    final db = await database;
+    return await db.update(
+      'SALE_ITEM',
+      saleItem,
+      where: 'sale_item_id = ?',
+      whereArgs: [saleItem['sale_item_id']],
+    );
+  }
+
+  Future<int> deleteSaleItem(String saleItemId) async {
+    final db = await database;
+    return await db.delete(
+      'SALE_ITEM',
+      where: 'sale_item_id = ?',
+      whereArgs: [saleItemId],
+    );
+  }
+
+  Future<int> deleteSaleItemsForSale(String saleId) async {
+    final db = await database;
+    return await db.delete(
+      'SALE_ITEM',
+      where: 'sale_id = ?',
+      whereArgs: [saleId],
+    );
+  }
+
+  // --- CRUD Methods for PAYMENT Table ---
+  Future<int> insertPayment(Map<String, dynamic> payment) async {
+    final db = await database;
+    return await db.insert('PAYMENT', payment, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getPayments() async {
+    final db = await database;
+    return await db.query('PAYMENT', orderBy: 'payment_date DESC');
+  }
+
+  // Get payments with joined membership and customer details
+  Future<List<Map<String, dynamic>>> getDetailedPayments() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        PY.*,
+        M.start_date AS membership_start_date,
+        M.end_date AS membership_end_date,
+        M.status AS membership_status,
+        C.first_name AS customer_first_name,
+        C.last_name AS customer_last_name
+      FROM PAYMENT PY
+      INNER JOIN MEMBERSHIP M ON PY.membership_id = M.membership_id
+      INNER JOIN CUSTOMER C ON M.customer_id = C.customer_id
+      ORDER BY PY.payment_date DESC
+    ''');
+  }
+
+  Future<int> updatePayment(Map<String, dynamic> payment) async {
+    final db = await database;
+    return await db.update(
+      'PAYMENT',
+      payment,
+      where: 'payment_id = ?',
+      whereArgs: [payment['payment_id']],
+    );
+  }
+
+  Future<int> deletePayment(String paymentId) async {
+    final db = await database;
+    return await db.delete(
+      'PAYMENT',
+      where: 'payment_id = ?',
+      whereArgs: [paymentId],
+    );
+  }
+
+  // --- CRUD Methods for ATTENDANCE Table ---
+  Future<int> insertAttendance(Map<String, dynamic> attendance) async {
+    final db = await database;
+    return await db.insert('ATTENDANCE', attendance, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getAttendanceRecords() async {
+    final db = await database;
+    return await db.query('ATTENDANCE', orderBy: 'date DESC, checkin_time DESC');
+  }
+
+  // Get attendance records with joined customer details
+  Future<List<Map<String, dynamic>>> getDetailedAttendanceRecords() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        A.*,
+        C.first_name AS customer_first_name,
+        C.last_name AS customer_last_name
+      FROM ATTENDANCE A
+      INNER JOIN CUSTOMER C ON A.member_id = C.customer_id
+      ORDER BY A.date DESC, A.checkin_time DESC
+    ''');
+  }
+
+  Future<int> updateAttendance(Map<String, dynamic> attendance) async {
+    final db = await database;
+    return await db.update(
+      'ATTENDANCE',
+      attendance,
+      where: 'attendance_id = ?',
+      whereArgs: [attendance['attendance_id']],
+    );
+  }
+
+  Future<int> deleteAttendance(String attendanceId) async {
+    final db = await database;
+    return await db.delete(
+      'ATTENDANCE',
+      where: 'attendance_id = ?',
+      whereArgs: [attendanceId],
     );
   }
 }

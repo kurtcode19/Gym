@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:gym/models/attendance.dart';
 import 'package:gym/providers/database_helper.dart';
+import 'package:gym/models/customer.dart';
+import 'package:intl/intl.dart'; // For customer names
 
 // Model to hold joined attendance data for display
 class DetailedAttendance {
@@ -26,15 +28,15 @@ class DetailedAttendance {
 
 class AttendanceProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
-  List<DetailedAttendance> _records = [];
-  List<DetailedAttendance> _filteredRecords = [];
+  List<DetailedAttendance> _attendanceRecords = [];
+  List<DetailedAttendance> _filteredAttendanceRecords = [];
   bool _isLoading = false;
 
   AttendanceProvider(this._dbHelper) {
     fetchAttendanceRecords();
   }
 
-  List<DetailedAttendance> get records => _filteredRecords;
+  List<DetailedAttendance> get attendanceRecords => _filteredAttendanceRecords;
   bool get isLoading => _isLoading;
 
   void _setLoading(bool value) {
@@ -45,11 +47,11 @@ class AttendanceProvider with ChangeNotifier {
   Future<void> fetchAttendanceRecords() async {
     _setLoading(true);
     try {
-      final recordMaps = await _dbHelper.getAttendanceRecords();
-      _records = recordMaps.map((map) => DetailedAttendance.fromMap(map)).toList();
-      _filteredRecords = List.from(_records);
+      final attendanceMaps = await _dbHelper.getDetailedAttendanceRecords();
+      _attendanceRecords = attendanceMaps.map((map) => DetailedAttendance.fromMap(map)).toList();
+      _filteredAttendanceRecords = List.from(_attendanceRecords);
     } catch (e) {
-      print('Error fetching attendance records: $e');
+      print('Error fetching detailed attendance records: $e');
     } finally {
       _setLoading(false);
     }
@@ -58,41 +60,42 @@ class AttendanceProvider with ChangeNotifier {
   Future<void> addAttendance(Attendance attendance) async {
     try {
       await _dbHelper.insertAttendance(attendance.toJson());
-      await fetchAttendanceRecords(); // Re-fetch to update detailed view
+      await fetchAttendanceRecords(); // Re-fetch to get the detailed view
     } catch (e) {
-      print('Error adding attendance: $e');
+      print('Error adding attendance record: $e');
     }
   }
 
   Future<void> updateAttendance(Attendance attendance) async {
     try {
       await _dbHelper.updateAttendance(attendance.toJson());
-      await fetchAttendanceRecords(); // Re-fetch to update detailed view
+      await fetchAttendanceRecords(); // Re-fetch to get the detailed view
     } catch (e) {
-      print('Error updating attendance: $e');
+      print('Error updating attendance record: $e');
     }
   }
 
   Future<void> deleteAttendance(String attendanceId) async {
     try {
       await _dbHelper.deleteAttendance(attendanceId);
-      _records.removeWhere((r) => r.attendance.attendanceId == attendanceId);
-      _filteredRecords.removeWhere((r) => r.attendance.attendanceId == attendanceId);
+      _attendanceRecords.removeWhere((a) => a.attendance.attendanceId == attendanceId);
+      _filteredAttendanceRecords.removeWhere((a) => a.attendance.attendanceId == attendanceId);
       notifyListeners();
     } catch (e) {
-      print('Error deleting attendance: $e');
+      print('Error deleting attendance record: $e');
     }
   }
 
-  void searchAttendance(String query) {
+  void searchAttendanceRecords(String query) {
     if (query.isEmpty) {
-      _filteredRecords = List.from(_records);
+      _filteredAttendanceRecords = List.from(_attendanceRecords);
     } else {
-      _filteredRecords = _records.where((record) {
+      _filteredAttendanceRecords = _attendanceRecords.where((detailedAttendance) {
         final lowerCaseQuery = query.toLowerCase();
-        return record.customerFirstName.toLowerCase().contains(lowerCaseQuery) ||
-               record.customerLastName.toLowerCase().contains(lowerCaseQuery) ||
-               (record.attendance.facilityUsed?.toLowerCase().contains(lowerCaseQuery) ?? false);
+        return detailedAttendance.customerFirstName.toLowerCase().contains(lowerCaseQuery) ||
+               detailedAttendance.customerLastName.toLowerCase().contains(lowerCaseQuery) ||
+               (detailedAttendance.attendance.facilityUsed?.toLowerCase().contains(lowerCaseQuery) ?? false) ||
+               DateFormat('yyyy-MM-dd').format(detailedAttendance.attendance.date).contains(lowerCaseQuery);
       }).toList();
     }
     notifyListeners();

@@ -9,10 +9,14 @@ import 'package:gym/providers/database_helper.dart';
 import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/membership_plan_provider.dart';
 import 'package:gym/providers/membership_provider.dart';
-import 'package:gym/providers/attendance_provider.dart'; // Placeholder
-import 'package:gym/providers/trainer_provider.dart'; // NEW
-import 'package:gym/providers/class_provider.dart'; // NEW
-import 'package:gym/providers/class_booking_provider.dart'; // NEW
+import 'package:gym/providers/attendance_provider.dart'; // REAL IMPLEMENTATION
+import 'package:gym/providers/trainer_provider.dart';
+import 'package:gym/providers/class_provider.dart';
+import 'package:gym/providers/class_booking_provider.dart';
+import 'package:gym/providers/product_category_provider.dart';
+import 'package:gym/providers/product_provider.dart';
+import 'package:gym/providers/sale_provider.dart';
+import 'package:gym/providers/payment_provider.dart';
 
 
 // Screens
@@ -22,12 +26,22 @@ import 'package:gym/screens/membership_plans_screen.dart';
 import 'package:gym/screens/add_membership_plan_screen.dart';
 import 'package:gym/screens/memberships_screen.dart';
 import 'package:gym/screens/add_membership_screen.dart';
-import 'package:gym/screens/trainers_screen.dart'; // NEW
-import 'package:gym/screens/add_trainer_screen.dart'; // NEW
-import 'package:gym/screens/classes_screen.dart'; // NEW
-import 'package:gym/screens/add_class_screen.dart'; // NEW
-import 'package:gym/screens/class_bookings_screen.dart'; // NEW
-import 'package:gym/screens/add_class_booking_screen.dart'; // NEW
+import 'package:gym/screens/trainers_screen.dart';
+import 'package:gym/screens/add_trainer_screen.dart';
+import 'package:gym/screens/classes_screen.dart';
+import 'package:gym/screens/add_class_screen.dart';
+import 'package:gym/screens/class_bookings_screen.dart';
+import 'package:gym/screens/add_class_booking_screen.dart';
+import 'package:gym/screens/product_categories_screen.dart';
+import 'package:gym/screens/add_product_category_screen.dart';
+import 'package:gym/screens/products_screen.dart';
+import 'package:gym/screens/add_product_screen.dart';
+import 'package:gym/screens/sales_screen.dart';
+import 'package:gym/screens/add_sale_screen.dart';
+import 'package:gym/screens/payments_screen.dart';
+import 'package:gym/screens/add_payment_screen.dart';
+import 'package:gym/screens/attendance_screen.dart'; // NEW
+import 'package:gym/screens/add_attendance_screen.dart'; // NEW
 import 'package:gym/screens/dashboard_screen.dart';
 
 void main() async {
@@ -45,11 +59,15 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CustomerProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => MembershipPlanProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => MembershipProvider(DatabaseHelper())),
+        // REAL AttendanceProvider
         ChangeNotifierProvider(create: (_) => AttendanceProvider(DatabaseHelper())),
-        // NEW Providers for Trainer & Class Management
         ChangeNotifierProvider(create: (_) => TrainerProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => ClassProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => ClassBookingProvider(DatabaseHelper())),
+        ChangeNotifierProvider(create: (_) => ProductCategoryProvider(DatabaseHelper())),
+        ChangeNotifierProvider(create: (_) => ProductProvider(DatabaseHelper())),
+        ChangeNotifierProvider(create: (_) => SaleProvider(DatabaseHelper())),
+        ChangeNotifierProvider(create: (_) => PaymentProvider(DatabaseHelper())),
         // Add other providers here as they are implemented
       ],
       child: MaterialApp(
@@ -102,7 +120,7 @@ class MyApp extends StatelessWidget {
               textStyle: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
-          colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blueGrey).copyWith(secondary: Colors.amber), // Added secondary color
+          colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blueGrey).copyWith(secondary: Colors.amber),
         ),
         // Define initial routes
         initialRoute: '/',
@@ -114,22 +132,25 @@ class MyApp extends StatelessWidget {
           '/add_membership_plan': (context) => const AddMembershipPlanScreen(),
           '/memberships': (context) => const MembershipsScreen(),
           '/add_membership': (context) => const AddMembershipScreen(),
-          // NEW Routes for Trainer & Class Management
           '/trainers': (context) => const TrainersScreen(),
           '/add_trainer': (context) => const AddTrainerScreen(),
           '/classes': (context) => const ClassesScreen(),
           '/add_class': (context) => const AddClassScreen(),
           '/class_bookings': (context) => const ClassBookingsScreen(),
           '/add_class_booking': (context) => const AddClassBookingScreen(),
+          '/product_categories': (context) => const ProductCategoriesScreen(),
+          '/add_product_category': (context) => const AddProductCategoryScreen(),
+          '/products': (context) => const ProductsScreen(),
+          '/add_product': (context) => const AddProductScreen(),
+          '/sales': (context) => const SalesScreen(),
+          '/add_sale': (context) => const AddSaleScreen(),
+          '/payments': (context) => const PaymentsScreen(),
+          '/add_payment': (context) => const AddPaymentScreen(),
+          // NEW Routes for Attendance Management
+          '/attendance': (context) => const AttendanceScreen(),
+          '/add_attendance': (context) => const AddAttendanceScreen(),
         },
       ),
     );
   }
-}
-
-// Placeholder for AttendanceProvider (as it was in the original prompt)
-class AttendanceProvider extends ChangeNotifier {
-  final DatabaseHelper _dbHelper;
-  AttendanceProvider(this._dbHelper);
-  // ... (implement fetch, add, update, delete for Attendance)
 }

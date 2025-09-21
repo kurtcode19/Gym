@@ -12,7 +12,7 @@ class DashboardScreen extends StatelessWidget {
         title: const Text('Dashboard'),
       ),
       body: Center(
-        child: SingleChildScrollView( // Use SingleChildScrollView for more buttons
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -41,7 +41,6 @@ class DashboardScreen extends StatelessWidget {
                 icon: Icons.card_membership,
                 route: '/memberships',
               ),
-              // NEW Buttons for Trainer & Class Management
               _buildDashboardButton(
                 context,
                 title: 'Manage Trainers',
@@ -59,6 +58,37 @@ class DashboardScreen extends StatelessWidget {
                 title: 'Manage Class Bookings',
                 icon: Icons.event_available,
                 route: '/class_bookings',
+              ),
+              _buildDashboardButton(
+                context,
+                title: 'Manage Product Categories',
+                icon: Icons.category,
+                route: '/product_categories',
+              ),
+              _buildDashboardButton(
+                context,
+                title: 'Manage Products',
+                icon: Icons.shopping_bag,
+                route: '/products',
+              ),
+              _buildDashboardButton(
+                context,
+                title: 'Manage Sales',
+                icon: Icons.receipt_long,
+                route: '/sales',
+              ),
+              _buildDashboardButton(
+                context,
+                title: 'Manage Payments',
+                icon: Icons.payment,
+                route: '/payments',
+              ),
+              // NEW Button for Attendance Management
+              _buildDashboardButton(
+                context,
+                title: 'Manage Attendance',
+                icon: Icons.check_circle_outline,
+                route: '/attendance',
               ),
               const SizedBox(height: 20),
               Text('More modules coming soon...', style: Theme.of(context).textTheme.bodySmall),
