@@ -66,18 +66,21 @@ class ClassBookingProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchClassBookings() async {
-    _setLoading(true);
-    try {
-      final bookingMaps = await _dbHelper.getClassBookings();
-      _bookings = bookingMaps.map((map) => DetailedClassBooking.fromMap(map)).toList();
-      _filteredBookings = List.from(_bookings);
-    } catch (e) {
-      print('Error fetching class bookings: $e');
-    } finally {
-      _setLoading(false);
-    }
+// lib/providers/class_booking_provider.dart - UPDATED
+
+Future<void> fetchClassBookings() async {
+  _setLoading(true);
+  try {
+    // USE getDetailedClassBookings() instead of getClassBookings()
+    final bookingMaps = await _dbHelper.getDetailedClassBookings();
+    _bookings = bookingMaps.map((map) => DetailedClassBooking.fromMap(map)).toList();
+    _filteredBookings = List.from(_bookings);
+  } catch (e) {
+    print('Error fetching class bookings: $e');
+  } finally {
+    _setLoading(false);
   }
+}
 
   Future<void> addClassBooking(ClassBooking booking) async {
     try {

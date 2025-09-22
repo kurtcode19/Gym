@@ -93,22 +93,32 @@ class SaleProvider with ChangeNotifier {
   }
 
   // This method will handle inserting a new sale and its associated items as a transaction
+// lib/providers/sale_provider.dart - UPDATED
+
 Future<void> addSale(Sale sale, List<SaleItem> items) async {
   final db = await _dbHelper.database;
   await db.transaction((txn) async {
     try {
+      // Insert the sale
       await txn.insert('SALE', sale.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
+      
+      // Insert sale items and update product stock
       for (var item in items) {
         await txn.insert('SALE_ITEM', item.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
+        
+        // Deduct the sold quantity from product stock
+        await txn.rawUpdate('''
+          UPDATE PRODUCT 
+          SET stock_quantity = stock_quantity - ? 
+          WHERE product_id = ?
+        ''', [item.quantity, item.productId]);
       }
-      // REMOVE THIS: await fetchSales(); // Don't call fetchSales inside transaction
     } catch (e) {
       print('Transaction failed to add sale: $e');
-      rethrow; // Important: rethrow to let the transaction know it failed
+      rethrow;
     }
   });
   
-  // Call fetchSales AFTER the transaction completes
   await fetchSales();
 }
 
@@ -116,6 +126,23 @@ Future<void> updateSale(Sale sale, List<SaleItem> newItems) async {
   final db = await _dbHelper.database;
   await db.transaction((txn) async {
     try {
+      // Get old items first to restore stock using your existing method
+      final oldItems = await txn.query(
+        'SALE_ITEM',
+        where: 'sale_id = ?',
+        whereArgs: [sale.saleId],
+      );
+      
+      // Restore stock from old items
+      for (var oldItem in oldItems) {
+        await txn.rawUpdate('''
+          UPDATE PRODUCT 
+          SET stock_quantity = stock_quantity + ? 
+          WHERE product_id = ?
+        ''', [oldItem['quantity'], oldItem['product_id']]);
+      }
+      
+      // Update sale
       await txn.update(
         'SALE',
         sale.toJson(),
@@ -123,37 +150,77 @@ Future<void> updateSale(Sale sale, List<SaleItem> newItems) async {
         whereArgs: [sale.saleId],
       );
 
-      // Delete old items and insert new ones
+      // Delete old items using your existing method
       await txn.delete(
         'SALE_ITEM',
         where: 'sale_id = ?',
         whereArgs: [sale.saleId],
       );
+      
+      // Insert new items and deduct stock
       for (var item in newItems) {
         await txn.insert('SALE_ITEM', item.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
+        
+        // Deduct the sold quantity from product stock
+        await txn.rawUpdate('''
+          UPDATE PRODUCT 
+          SET stock_quantity = stock_quantity - ? 
+          WHERE product_id = ?
+        ''', [item.quantity, item.productId]);
       }
-      // REMOVE THIS: await fetchSales(); // Don't call fetchSales inside transaction
     } catch (e) {
       print('Transaction failed to update sale: $e');
-      rethrow; // Important: rethrow to let the transaction know it failed
+      rethrow;
     }
   });
   
-  // Call fetchSales AFTER the transaction completes
   await fetchSales();
 }
-  // Delete a sale and its associated items (CASCADE in DB schema should handle items)
-  Future<void> deleteSale(String saleId) async {
+
+Future<void> deleteSale(String saleId) async {
+  final db = await _dbHelper.database;
+  await db.transaction((txn) async {
     try {
-      await _dbHelper.deleteSale(saleId);
-      _sales.removeWhere((s) => s.sale.saleId == saleId);
-      _filteredSales.removeWhere((s) => s.sale.saleId == saleId);
-      notifyListeners();
+      // Get items first to restore stock using your existing method
+      final items = await txn.query(
+        'SALE_ITEM',
+        where: 'sale_id = ?',
+        whereArgs: [saleId],
+      );
+      
+      // Restore stock
+      for (var item in items) {
+        await txn.rawUpdate('''
+          UPDATE PRODUCT 
+          SET stock_quantity = stock_quantity + ? 
+          WHERE product_id = ?
+        ''', [item['quantity'], item['product_id']]);
+      }
+      
+      // Delete sale items using your existing method
+      await txn.delete(
+        'SALE_ITEM',
+        where: 'sale_id = ?',
+        whereArgs: [saleId],
+      );
+      
+      // Delete sale using your existing method
+      await txn.delete(
+        'SALE',
+        where: 'sale_id = ?',
+        whereArgs: [saleId],
+      );
     } catch (e) {
       print('Error deleting sale: $e');
+      rethrow;
     }
-  }
-
+  });
+  
+  // Remove from local lists
+  _sales.removeWhere((s) => s.sale.saleId == saleId);
+  _filteredSales.removeWhere((s) => s.sale.saleId == saleId);
+  notifyListeners();
+}
   void searchSales(String query) {
     if (query.isEmpty) {
       _filteredSales = List.from(_sales);

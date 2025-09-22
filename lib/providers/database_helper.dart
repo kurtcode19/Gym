@@ -400,25 +400,26 @@ class DatabaseHelper {
     return await db.query('CLASS_BOOKING', orderBy: 'booking_date DESC');
   }
 
-  Future<List<Map<String, dynamic>>> getDetailedClassBookings() async {
-    final db = await database;
-    return await db.rawQuery('''
-      SELECT
-        CB.*,
-        C.first_name AS customer_first_name,
-        C.last_name AS customer_last_name,
-        CL.class_name AS class_name,
-        CL.schedule_time AS class_schedule_time,
-        T.first_name AS trainer_first_name,
-        T.last_name AS trainer_last_name
-      FROM CLASS_BOOKING CB
-      INNER JOIN CUSTOMER C ON CB.customer_id = C.customer_id
-      INNER JOIN CLASS CL ON CB.class_id = CL.class_id
-      LEFT JOIN TRAINER T ON CL.trainer_id = T.trainer_id
-      ORDER BY CL.schedule_time DESC, C.last_name
-    ''');
-  }
-
+// In your getDetailedClassBookings() method, add the missing column
+Future<List<Map<String, dynamic>>> getDetailedClassBookings() async {
+  final db = await database;
+  return await db.rawQuery('''
+    SELECT
+      CB.*,
+      C.first_name AS customer_first_name,
+      C.last_name AS customer_last_name,
+      CL.class_name AS class_name,
+      CL.schedule_time AS class_schedule_time,
+      CL.duration_minutes AS class_duration_minutes,
+      T.first_name AS trainer_first_name,
+      T.last_name AS trainer_last_name
+    FROM CLASS_BOOKING CB
+    INNER JOIN CUSTOMER C ON CB.customer_id = C.customer_id
+    INNER JOIN CLASS CL ON CB.class_id = CL.class_id
+    LEFT JOIN TRAINER T ON CL.trainer_id = T.trainer_id
+    ORDER BY CL.schedule_time DESC, C.last_name
+  ''');
+}
 
   Future<int> updateClassBooking(Map<String, dynamic> booking) async {
     final db = await database;

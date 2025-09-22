@@ -208,58 +208,50 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                 keyboardType: TextInputType.number,
                 validator: (value) => _totalAmount <= 0 && _currentSaleItems.isEmpty ? 'Sale cannot be empty' : null,
               ),
-              const SizedBox(height: 16),
-              FormBuilderDropdown<String>(
-                name: 'payment_method',
-                decoration: const InputDecoration(labelText: 'Payment Method'),
-                validator: (value) => value == null || value.isEmpty ? 'Payment method cannot be empty' : null,
-                items: const [
-                  DropdownMenuItem(value: 'Cash', child: Text('Cash')),
-                  DropdownMenuItem(value: 'Card', child: Text('Card')),
-                  DropdownMenuItem(value: 'Online', child: Text('Online Transfer')),
-                  DropdownMenuItem(value: 'Other', child: Text('Other')),
-                ],
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState?.saveAndValidate() ?? false) {
-                    final data = _formKey.currentState!.value;
-                    final saleId = isEditing ? widget.detailedSale!.sale.saleId : const Uuid().v4();
+const SizedBox(height: 32),
+ElevatedButton(
+  onPressed: () async {
+    if (_formKey.currentState?.saveAndValidate() ?? false) {
+      final data = _formKey.currentState!.value;
+      final saleId = isEditing ? widget.detailedSale!.sale.saleId : const Uuid().v4();
 
-                    final newSale = Sale(
-                      saleId: saleId,
-                      customerId: data['customer_id'],
-                      saleDate: data['sale_date'],
-                      totalAmount: _totalAmount,
-                      paymentMethod: data['payment_method'],
-                    );
+      final newSale = Sale(
+        saleId: saleId,
+        customerId: data['customer_id'],
+        saleDate: data['sale_date'],
+        totalAmount: _totalAmount,
+        paymentMethod: data['payment_method'],
+      );
 
-                    final finalSaleItems = _currentSaleItems.map((item) => item.copyWith(saleId: saleId)).toList();
+      final finalSaleItems = _currentSaleItems.map((item) => item.copyWith(saleId: saleId)).toList();
 
-                    if (isEditing) {
-                      await Provider.of<SaleProvider>(context, listen: false).updateSale(newSale, finalSaleItems);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sale updated successfully!')),
-                      );
-                    } else {
-                      await Provider.of<SaleProvider>(context, listen: false).addSale(newSale, finalSaleItems);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sale added successfully!')),
-                      );
-                    }
-                    Navigator.of(context).pop();
-                  } else if (_currentSaleItems.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please add at least one product to the sale.')),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
-                ),
-                child: Text(isEditing ? 'Update Sale' : 'Add Sale'),
-              ),
+      if (isEditing) {
+        await Provider.of<SaleProvider>(context, listen: false).updateSale(newSale, finalSaleItems);
+        // Refresh products to update stock display
+        await Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sale updated successfully!')),
+        );
+      } else {
+        await Provider.of<SaleProvider>(context, listen: false).addSale(newSale, finalSaleItems);
+        // Refresh products to update stock display
+        await Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sale added successfully!')),
+        );
+      }
+      Navigator.of(context).pop();
+    } else if (_currentSaleItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one product to the sale.')),
+      );
+    }
+  },
+  style: ElevatedButton.styleFrom(
+    minimumSize: const Size.fromHeight(50),
+  ),
+  child: Text(isEditing ? 'Update Sale' : 'Add Sale'),
+),
             ],
           ),
         ),
