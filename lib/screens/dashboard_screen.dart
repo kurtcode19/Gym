@@ -1,4 +1,4 @@
-// lib/screens/dashboard_screen.dart - UPDATED CONTENT
+// lib/screens/dashboard_screen.dart - Modern UI Design
 
 import 'package:flutter/material.dart';
 
@@ -8,122 +8,515 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Dashboard'),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Jay\'s Fitness',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            Text(
+              'Gym Management',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Stack(
             children: [
-              const Text(
-                'Welcome to Jay\'s Fitness Gym!',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+              IconButton(
+                icon: Icon(Icons.notifications_outlined, color: Colors.grey[700]),
+                onPressed: () {},
               ),
-              const SizedBox(height: 40),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Customers',
-                icon: Icons.people,
-                route: '/customers',
+              Positioned(
+                right: 11,
+                top: 11,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 14,
+                    minHeight: 14,
+                  ),
+                ),
               ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Plans',
-                icon: Icons.fitness_center,
-                route: '/membership_plans',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Memberships',
-                icon: Icons.card_membership,
-                route: '/memberships',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Trainers',
-                icon: Icons.person_add_alt_1,
-                route: '/trainers',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Classes',
-                icon: Icons.assignment,
-                route: '/classes',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Class Bookings',
-                icon: Icons.event_available,
-                route: '/class_bookings',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Product Categories',
-                icon: Icons.category,
-                route: '/product_categories',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Products',
-                icon: Icons.shopping_bag,
-                route: '/products',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Sales',
-                icon: Icons.receipt_long,
-                route: '/sales',
-              ),
-              _buildDashboardButton(
-                context,
-                title: 'Manage Payments',
-                icon: Icons.payment,
-                route: '/payments',
-              ),
-              // NEW Button for Attendance Management
-              _buildDashboardButton(
-                context,
-                title: 'Manage Attendance',
-                icon: Icons.check_circle_outline,
-                route: '/attendance',
-              ),
-              const SizedBox(height: 20),
-              Text('More modules coming soon...', style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
+          IconButton(
+            icon: Icon(Icons.settings_outlined, color: Colors.grey[700]),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Statistics Cards
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Active Members',
+                    value: '142',
+                    icon: Icons.people_outline,
+                    color: Colors.blue[100]!,
+                    iconColor: Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Today\'s Revenue',
+                    value: '₱3,450',
+                    icon: Icons.attach_money,
+                    color: Colors.green[100]!,
+                    iconColor: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Check-ins Today',
+                    value: '67',
+                    icon: Icons.check_circle_outline,
+                    color: Colors.orange[100]!,
+                    iconColor: Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Classes Today',
+                    value: '8',
+                    icon: Icons.event_note,
+                    color: Colors.purple[100]!,
+                    iconColor: Colors.purple,
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Quick Actions Section
+            Text(
+              'Quick Actions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickActionButton(
+                    context,
+                    title: 'Add Member',
+                    icon: Icons.person_add,
+                    color: Colors.blue,
+                    route: '/customers',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildQuickActionButton(
+                    context,
+                    title: 'Check In',
+                    icon: Icons.check_circle,
+                    color: Colors.green,
+                    route: '/attendance',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickActionButton(
+                    context,
+                    title: 'Book Class',
+                    icon: Icons.event,
+                    color: Colors.purple,
+                    route: '/class_bookings',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildQuickActionButton(
+                    context,
+                    title: 'Record Sale',
+                    icon: Icons.shopping_cart,
+                    color: Colors.orange,
+                    route: '/sales',
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Recent Activity Section
+            Text(
+              'Recent Activity',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            _buildActivityItem(
+              name: 'Maria Santos joined',
+              time: '2 minutes ago',
+              icon: Icons.person_add,
+              color: Colors.blue,
+            ),
+            _buildActivityItem(
+              name: 'John Doe checked in',
+              time: '5 minutes ago',
+              icon: Icons.check_circle,
+              color: Colors.green,
+            ),
+            _buildActivityItem(
+              name: 'New class booking',
+              time: '10 minutes ago',
+              icon: Icons.event,
+              color: Colors.purple,
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // All Management Options
+            Text(
+              'Management',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            _buildManagementGrid(context),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        currentIndex: 0,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'Members',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check_circle),
+            label: 'Attendance',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.event),
+            label: 'Classes',
+          ),
+        ],
+        onTap: (index) {
+          switch (index) {
+            case 1:
+              Navigator.pushNamed(context, '/customers');
+              break;
+            case 2:
+              Navigator.pushNamed(context, '/attendance');
+              break;
+            case 3:
+              Navigator.pushNamed(context, '/classes');
+              break;
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: iconColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: iconColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color color,
+    required String route,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.pushNamed(context, route);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          elevation: 0,
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 24),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildDashboardButton(BuildContext context, {required String title, required IconData icon, required String route}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.pushNamed(context, route);
-          },
-          icon: Icon(icon, size: 28),
-          label: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(title, style: const TextStyle(fontSize: 18)),
+  Widget _buildActivityItem({
+    required String name,
+    required String time,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).primaryColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            elevation: 5,
-          ),
-        ),
+        ],
       ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManagementGrid(BuildContext context) {
+    final managementItems = [
+      {'title': 'Customers', 'icon': Icons.people, 'route': '/customers'},
+      {'title': 'Plans', 'icon': Icons.fitness_center, 'route': '/membership_plans'},
+      {'title': 'Memberships', 'icon': Icons.card_membership, 'route': '/memberships'},
+      {'title': 'Trainers', 'icon': Icons.person_add_alt_1, 'route': '/trainers'},
+      {'title': 'Classes', 'icon': Icons.assignment, 'route': '/classes'},
+      {'title': 'Bookings', 'icon': Icons.event_available, 'route': '/class_bookings'},
+      {'title': 'Categories', 'icon': Icons.category, 'route': '/product_categories'},
+      {'title': 'Products', 'icon': Icons.shopping_bag, 'route': '/products'},
+      {'title': 'Sales', 'icon': Icons.receipt_long, 'route': '/sales'},
+      {'title': 'Payments', 'icon': Icons.payment, 'route': '/payments'},
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 2.5,
+      ),
+      itemCount: managementItems.length,
+      itemBuilder: (context, index) {
+        final item = managementItems[index];
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                Navigator.pushNamed(context, item['route'] as String);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      item['icon'] as IconData,
+                      size: 24,
+                      color: Colors.grey[700],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item['title'] as String,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey[400],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

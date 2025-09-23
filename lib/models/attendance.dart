@@ -24,7 +24,7 @@ class Attendance {
       'attendance_id': attendanceId,
       'member_id': memberId,
       'checkin_time': checkinTime.millisecondsSinceEpoch ~/ 1000,
-      'checkout_time': checkoutTime!.millisecondsSinceEpoch ~/ 1000,
+      'checkout_time': checkoutTime != null ? checkoutTime!.millisecondsSinceEpoch ~/ 1000 : null,
       'date': date.millisecondsSinceEpoch ~/ 1000,
       'facility_used': facilityUsed,
     };
