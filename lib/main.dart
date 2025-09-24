@@ -5,44 +5,48 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // Database helper and providers
-import 'package:gym/providers/database_helper.dart';
-import 'package:gym/providers/customer_provider.dart';
-import 'package:gym/providers/membership_plan_provider.dart';
-import 'package:gym/providers/membership_provider.dart';
-import 'package:gym/providers/attendance_provider.dart'; // REAL IMPLEMENTATION
-import 'package:gym/providers/trainer_provider.dart';
-import 'package:gym/providers/class_provider.dart';
-import 'package:gym/providers/class_booking_provider.dart';
-import 'package:gym/providers/product_category_provider.dart';
-import 'package:gym/providers/product_provider.dart';
-import 'package:gym/providers/sale_provider.dart';
-import 'package:gym/providers/payment_provider.dart';
+import 'package:gym/providers/database_helper.dart'; // Corrected import
+import 'package:gym/providers/customer_provider.dart'; // Corrected import
+import 'package:gym/providers/membership_plan_provider.dart'; // Corrected import
+import 'package:gym/providers/membership_provider.dart'; // Corrected import
+import 'package:gym/providers/attendance_provider.dart'; // Corrected import (REAL IMPLEMENTATION)
+import 'package:gym/providers/trainer_provider.dart'; // Corrected import
+import 'package:gym/providers/class_provider.dart'; // Corrected import
+import 'package:gym/providers/class_booking_provider.dart'; // Corrected import
+import 'package:gym/providers/product_category_provider.dart'; // Corrected import
+import 'package:gym/providers/product_provider.dart'; // Corrected import
+import 'package:gym/providers/sale_provider.dart'; // Corrected import
+import 'package:gym/providers/payment_provider.dart'; // Corrected import
+import 'package:gym/providers/expense_provider.dart'; // NEW - Corrected import
 
 
 // Screens
-import 'package:gym/screens/customers_screen.dart';
-import 'package:gym/screens/add_customer_screen.dart';
-import 'package:gym/screens/membership_plans_screen.dart';
-import 'package:gym/screens/add_membership_plan_screen.dart';
-import 'package:gym/screens/memberships_screen.dart';
-import 'package:gym/screens/add_membership_screen.dart';
-import 'package:gym/screens/trainers_screen.dart';
-import 'package:gym/screens/add_trainer_screen.dart';
-import 'package:gym/screens/classes_screen.dart';
-import 'package:gym/screens/add_class_screen.dart';
-import 'package:gym/screens/class_bookings_screen.dart';
-import 'package:gym/screens/add_class_booking_screen.dart';
-import 'package:gym/screens/product_categories_screen.dart';
-import 'package:gym/screens/add_product_category_screen.dart';
-import 'package:gym/screens/products_screen.dart';
-import 'package:gym/screens/add_product_screen.dart';
-import 'package:gym/screens/sales_screen.dart';
-import 'package:gym/screens/add_sale_screen.dart';
-import 'package:gym/screens/payments_screen.dart';
-import 'package:gym/screens/add_payment_screen.dart';
-import 'package:gym/screens/attendance_screen.dart'; // NEW
-import 'package:gym/screens/add_attendance_screen.dart'; // NEW
-import 'package:gym/screens/dashboard_screen.dart';
+import 'package:gym/screens/customers_screen.dart'; // Corrected import
+import 'package:gym/screens/add_customer_screen.dart'; // Corrected import
+import 'package:gym/screens/membership_plans_screen.dart'; // Corrected import
+import 'package:gym/screens/add_membership_plan_screen.dart'; // Corrected import
+import 'package:gym/screens/memberships_screen.dart'; // Corrected import
+import 'package:gym/screens/add_membership_screen.dart'; // Corrected import
+import 'package:gym/screens/trainers_screen.dart'; // Corrected import
+import 'package:gym/screens/add_trainer_screen.dart'; // Corrected import
+import 'package:gym/screens/classes_screen.dart'; // Corrected import
+import 'package:gym/screens/add_class_screen.dart'; // Corrected import
+import 'package:gym/screens/class_bookings_screen.dart'; // Corrected import
+import 'package:gym/screens/add_class_booking_screen.dart'; // Corrected import
+import 'package:gym/screens/product_categories_screen.dart'; // Corrected import
+import 'package:gym/screens/add_product_category_screen.dart'; // Corrected import
+import 'package:gym/screens/products_screen.dart'; // Corrected import
+import 'package:gym/screens/add_product_screen.dart'; // Corrected import
+import 'package:gym/screens/sales_screen.dart'; // Corrected import
+import 'package:gym/screens/add_sale_screen.dart'; // Corrected import
+import 'package:gym/screens/payments_screen.dart'; // Corrected import
+import 'package:gym/screens/add_payment_screen.dart'; // Corrected import
+import 'package:gym/screens/attendance_screen.dart'; // Corrected import
+import 'package:gym/screens/add_attendance_screen.dart'; // Corrected import
+import 'package:gym/screens/expenses_screen.dart'; // NEW - Corrected import
+import 'package:gym/screens/add_expense_screen.dart'; // NEW - Corrected import
+import 'package:gym/screens/finance_report_screen.dart'; // NEW - Corrected import
+import 'package:gym/screens/dashboard_screen.dart'; // Corrected import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +63,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CustomerProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => MembershipPlanProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => MembershipProvider(DatabaseHelper())),
-        // REAL AttendanceProvider
         ChangeNotifierProvider(create: (_) => AttendanceProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => TrainerProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => ClassProvider(DatabaseHelper())),
@@ -68,7 +71,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => SaleProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => PaymentProvider(DatabaseHelper())),
-        // Add other providers here as they are implemented
+        // NEW Provider for Expense Management
+        ChangeNotifierProvider(create: (_) => ExpenseProvider(DatabaseHelper())),
       ],
       child: MaterialApp(
         title: 'Jay\'s Fitness Gym',
@@ -146,9 +150,12 @@ class MyApp extends StatelessWidget {
           '/add_sale': (context) => const AddSaleScreen(),
           '/payments': (context) => const PaymentsScreen(),
           '/add_payment': (context) => const AddPaymentScreen(),
-          // NEW Routes for Attendance Management
           '/attendance': (context) => const AttendanceScreen(),
           '/add_attendance': (context) => const AddAttendanceScreen(),
+          // NEW Routes for Finance & Expenses Management
+          '/expenses': (context) => const ExpensesScreen(),
+          '/add_expense': (context) => const AddExpenseScreen(),
+          '/finance_report': (context) => const FinanceReportScreen(),
         },
       ),
     );

@@ -1,12 +1,63 @@
-// lib/screens/dashboard_screen.dart - Modern UI Design
+// lib/screens/dashboard_screen.dart - Modern UI Design - UPDATED CONTENT
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+
+// Import providers to fetch dynamic data
+import 'package:gym/providers/customer_provider.dart'; // Corrected import
+import 'package:gym/providers/membership_provider.dart'; // Corrected import
+import 'package:gym/providers/attendance_provider.dart'; // Corrected import
+import 'package:gym/providers/class_provider.dart'; // Corrected import
+import 'package:gym/providers/sale_provider.dart'; // Corrected import
+import 'package:gym/providers/payment_provider.dart'; // Corrected import
+
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Watch providers to get current state for dynamic stats
+    final customerProvider = Provider.of<CustomerProvider>(context);
+    final membershipProvider = Provider.of<MembershipProvider>(context);
+    final attendanceProvider = Provider.of<AttendanceProvider>(context);
+    final classProvider = Provider.of<ClassProvider>(context);
+    final saleProvider = Provider.of<SaleProvider>(context);
+    final paymentProvider = Provider.of<PaymentProvider>(context);
+
+    // Dynamic Stats Calculation
+    final activeMembersCount = membershipProvider.memberships
+        .where((m) => m.membership.status == 'Active' && m.membership.endDate.isAfter(DateTime.now()))
+        .length;
+
+    final today = DateTime.now();
+    final todaySales = saleProvider.sales.where(
+      (s) => s.sale.saleDate.year == today.year &&
+             s.sale.saleDate.month == today.month &&
+             s.sale.saleDate.day == today.day,
+    );
+    final todayPayments = paymentProvider.payments.where(
+      (p) => p.payment.paymentDate.year == today.year &&
+             p.payment.paymentDate.month == today.month &&
+             p.payment.paymentDate.day == today.day,
+    );
+    final todaysRevenue = todaySales.fold(0.0, (sum, sale) => sum + sale.sale.totalAmount) +
+                         todayPayments.fold(0.0, (sum, payment) => sum + payment.payment.amount);
+
+
+    final todayCheckins = attendanceProvider.attendanceRecords.where(
+      (a) => a.attendance.checkinTime.year == today.year &&
+             a.attendance.checkinTime.month == today.month &&
+             a.attendance.checkinTime.day == today.day,
+    ).length;
+
+    final todayClasses = classProvider.classes.where(
+      (c) => c.gymClass.scheduleTime.year == today.year &&
+             c.gymClass.scheduleTime.month == today.month &&
+             c.gymClass.scheduleTime.day == today.day,
+    ).length;
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -37,7 +88,12 @@ class DashboardScreen extends StatelessWidget {
             children: [
               IconButton(
                 icon: Icon(Icons.notifications_outlined, color: Colors.grey[700]),
-                onPressed: () {},
+                onPressed: () {
+                  // TODO: Implement notifications logic
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Notifications (TODO)')),
+                  );
+                },
               ),
               Positioned(
                 right: 11,
@@ -58,7 +114,12 @@ class DashboardScreen extends StatelessWidget {
           ),
           IconButton(
             icon: Icon(Icons.settings_outlined, color: Colors.grey[700]),
-            onPressed: () {},
+            onPressed: () {
+              // TODO: Implement settings logic
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Settings (TODO)')),
+              );
+            },
           ),
         ],
       ),
@@ -73,7 +134,7 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   child: _buildStatCard(
                     title: 'Active Members',
-                    value: '142',
+                    value: activeMembersCount.toString(), // Dynamic
                     icon: Icons.people_outline,
                     color: Colors.blue[100]!,
                     iconColor: Colors.blue,
@@ -83,7 +144,7 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   child: _buildStatCard(
                     title: 'Today\'s Revenue',
-                    value: '₱3,450',
+                    value: NumberFormat.currency(symbol: '₱').format(todaysRevenue), // Dynamic
                     icon: Icons.attach_money,
                     color: Colors.green[100]!,
                     iconColor: Colors.green,
@@ -97,7 +158,7 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   child: _buildStatCard(
                     title: 'Check-ins Today',
-                    value: '67',
+                    value: todayCheckins.toString(), // Dynamic
                     icon: Icons.check_circle_outline,
                     color: Colors.orange[100]!,
                     iconColor: Colors.orange,
@@ -107,7 +168,7 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   child: _buildStatCard(
                     title: 'Classes Today',
-                    value: '8',
+                    value: todayClasses.toString(), // Dynamic
                     icon: Icons.event_note,
                     color: Colors.purple[100]!,
                     iconColor: Colors.purple,
@@ -115,9 +176,9 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Quick Actions Section
             Text(
               'Quick Actions',
@@ -128,7 +189,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             Row(
               children: [
                 Expanded(
@@ -137,7 +198,7 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Add Member',
                     icon: Icons.person_add,
                     color: Colors.blue,
-                    route: '/customers',
+                    route: '/add_customer', // Changed to actual add customer route
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -147,7 +208,7 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Check In',
                     icon: Icons.check_circle,
                     color: Colors.green,
-                    route: '/attendance',
+                    route: '/add_attendance', // Changed to actual add attendance route
                   ),
                 ),
               ],
@@ -161,7 +222,7 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Book Class',
                     icon: Icons.event,
                     color: Colors.purple,
-                    route: '/class_bookings',
+                    route: '/add_class_booking', // Changed to actual add class booking route
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -171,14 +232,14 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Record Sale',
                     icon: Icons.shopping_cart,
                     color: Colors.orange,
-                    route: '/sales',
+                    route: '/add_sale', // Changed to actual add sale route
                   ),
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Recent Activity Section
             Text(
               'Recent Activity',
@@ -189,28 +250,35 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+            // TODO: Replace with dynamic fetching of recent activities (e.g., last 3 customers, attendance, bookings)
             _buildActivityItem(
-              name: 'Maria Santos joined',
+              name: 'New customer signed up',
               time: '2 minutes ago',
               icon: Icons.person_add,
               color: Colors.blue,
             ),
             _buildActivityItem(
-              name: 'John Doe checked in',
+              name: 'Member checked in',
               time: '5 minutes ago',
               icon: Icons.check_circle,
               color: Colors.green,
             ),
             _buildActivityItem(
-              name: 'New class booking',
+              name: 'Class booking received',
               time: '10 minutes ago',
               icon: Icons.event,
               color: Colors.purple,
             ),
-            
+            _buildActivityItem(
+              name: 'Product sale recorded',
+              time: '15 minutes ago',
+              icon: Icons.shopping_cart,
+              color: Colors.orange,
+            ),
+
+
             const SizedBox(height: 32),
-            
+
             // All Management Options
             Text(
               'Management',
@@ -221,7 +289,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             _buildManagementGrid(context),
           ],
         ),
@@ -230,7 +298,7 @@ class DashboardScreen extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
-        currentIndex: 0,
+        currentIndex: 0, // Always start at dashboard
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
@@ -245,12 +313,14 @@ class DashboardScreen extends StatelessWidget {
             label: 'Attendance',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.event),
+            icon: Icon(Icons.assignment), // Changed to classes
             label: 'Classes',
           ),
         ],
         onTap: (index) {
           switch (index) {
+            case 0: // Dashboard - already here
+              break;
             case 1:
               Navigator.pushNamed(context, '/customers');
               break;
@@ -258,7 +328,7 @@ class DashboardScreen extends StatelessWidget {
               Navigator.pushNamed(context, '/attendance');
               break;
             case 3:
-              Navigator.pushNamed(context, '/classes');
+              Navigator.pushNamed(context, '/classes'); // Changed to classes
               break;
           }
         },
@@ -452,6 +522,9 @@ class DashboardScreen extends StatelessWidget {
       {'title': 'Products', 'icon': Icons.shopping_bag, 'route': '/products'},
       {'title': 'Sales', 'icon': Icons.receipt_long, 'route': '/sales'},
       {'title': 'Payments', 'icon': Icons.payment, 'route': '/payments'},
+      {'title': 'Attendance', 'icon': Icons.check_circle_outline, 'route': '/attendance'},
+      {'title': 'Expenses', 'icon': Icons.money_off, 'route': '/expenses'}, // NEW
+      {'title': 'Finance Report', 'icon': Icons.pie_chart, 'route': '/finance_report'}, // NEW
     ];
 
     return GridView.builder(
