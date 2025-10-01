@@ -182,7 +182,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // EQUIPMENT Table
+    // EQUIPMENT Table (This table was already present in your provided schema)
     await db.execute('''
       CREATE TABLE EQUIPMENT (
         equipment_id TEXT PRIMARY KEY,
@@ -401,7 +401,6 @@ class DatabaseHelper {
     return await db.query('CLASS_BOOKING', orderBy: 'booking_date DESC');
   }
 
-  // In your getDetailedClassBookings() method, add the missing column
   Future<List<Map<String, dynamic>>> getDetailedClassBookings() async {
     final db = await database;
     return await db.rawQuery('''
@@ -731,6 +730,36 @@ class DatabaseHelper {
       'EXPENSE',
       where: 'expense_id = ?',
       whereArgs: [expenseId],
+    );
+  }
+
+  // --- CRUD Methods for EQUIPMENT Table --- // NEW
+  Future<int> insertEquipment(Map<String, dynamic> equipment) async {
+    final db = await database;
+    return await db.insert('EQUIPMENT', equipment, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getEquipment() async {
+    final db = await database;
+    return await db.query('EQUIPMENT', orderBy: 'equipment_name');
+  }
+
+  Future<int> updateEquipment(Map<String, dynamic> equipment) async {
+    final db = await database;
+    return await db.update(
+      'EQUIPMENT',
+      equipment,
+      where: 'equipment_id = ?',
+      whereArgs: [equipment['equipment_id']],
+    );
+  }
+
+  Future<int> deleteEquipment(String equipmentId) async {
+    final db = await database;
+    return await db.delete(
+      'EQUIPMENT',
+      where: 'equipment_id = ?',
+      whereArgs: [equipmentId],
     );
   }
 }

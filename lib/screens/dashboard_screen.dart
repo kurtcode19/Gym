@@ -5,12 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 // Import providers to fetch dynamic data
-import 'package:gym/providers/customer_provider.dart'; // Corrected import
-import 'package:gym/providers/membership_provider.dart'; // Corrected import
-import 'package:gym/providers/attendance_provider.dart'; // Corrected import
-import 'package:gym/providers/class_provider.dart'; // Corrected import
-import 'package:gym/providers/sale_provider.dart'; // Corrected import
-import 'package:gym/providers/payment_provider.dart'; // Corrected import
+import 'package:gym/providers/customer_provider.dart';
+import 'package:gym/providers/membership_provider.dart';
+import 'package:gym/providers/attendance_provider.dart';
+import 'package:gym/providers/class_provider.dart';
+import 'package:gym/providers/sale_provider.dart';
+import 'package:gym/providers/payment_provider.dart';
+import 'package:gym/providers/equipment_provider.dart'; // NEW
 
 
 class DashboardScreen extends StatelessWidget {
@@ -25,6 +26,7 @@ class DashboardScreen extends StatelessWidget {
     final classProvider = Provider.of<ClassProvider>(context);
     final saleProvider = Provider.of<SaleProvider>(context);
     final paymentProvider = Provider.of<PaymentProvider>(context);
+    final equipmentProvider = Provider.of<EquipmentProvider>(context); // NEW
 
     // Dynamic Stats Calculation
     final activeMembersCount = membershipProvider.memberships
@@ -198,7 +200,7 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Add Member',
                     icon: Icons.person_add,
                     color: Colors.blue,
-                    route: '/add_customer', // Changed to actual add customer route
+                    route: '/add_customer',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -208,7 +210,7 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Check In',
                     icon: Icons.check_circle,
                     color: Colors.green,
-                    route: '/add_attendance', // Changed to actual add attendance route
+                    route: '/add_attendance',
                   ),
                 ),
               ],
@@ -222,7 +224,7 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Book Class',
                     icon: Icons.event,
                     color: Colors.purple,
-                    route: '/add_class_booking', // Changed to actual add class booking route
+                    route: '/add_class_booking',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -232,7 +234,7 @@ class DashboardScreen extends StatelessWidget {
                     title: 'Record Sale',
                     icon: Icons.shopping_cart,
                     color: Colors.orange,
-                    route: '/add_sale', // Changed to actual add sale route
+                    route: '/add_sale',
                   ),
                 ),
               ],
@@ -523,8 +525,9 @@ class DashboardScreen extends StatelessWidget {
       {'title': 'Sales', 'icon': Icons.receipt_long, 'route': '/sales'},
       {'title': 'Payments', 'icon': Icons.payment, 'route': '/payments'},
       {'title': 'Attendance', 'icon': Icons.check_circle_outline, 'route': '/attendance'},
-      {'title': 'Expenses', 'icon': Icons.money_off, 'route': '/expenses'}, // NEW
-      {'title': 'Finance Report', 'icon': Icons.pie_chart, 'route': '/finance_report'}, // NEW
+      {'title': 'Expenses', 'icon': Icons.money_off, 'route': '/expenses'},
+      {'title': 'Finance Report', 'icon': Icons.pie_chart, 'route': '/finance_report'},
+      {'title': 'Equipment', 'icon': Icons.fitness_center_outlined, 'route': '/equipment'}, // NEW
     ];
 
     return GridView.builder(
