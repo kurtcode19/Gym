@@ -11,7 +11,8 @@ import 'package:gym/providers/attendance_provider.dart';
 import 'package:gym/providers/class_provider.dart';
 import 'package:gym/providers/sale_provider.dart';
 import 'package:gym/providers/payment_provider.dart';
-import 'package:gym/providers/equipment_provider.dart'; // NEW
+import 'package:gym/providers/equipment_provider.dart';
+import 'package:gym/auth/auth_provider.dart'; // NEW: For logout functionality
 
 
 class DashboardScreen extends StatelessWidget {
@@ -26,7 +27,7 @@ class DashboardScreen extends StatelessWidget {
     final classProvider = Provider.of<ClassProvider>(context);
     final saleProvider = Provider.of<SaleProvider>(context);
     final paymentProvider = Provider.of<PaymentProvider>(context);
-    final equipmentProvider = Provider.of<EquipmentProvider>(context); // NEW
+    final equipmentProvider = Provider.of<EquipmentProvider>(context);
 
     // Dynamic Stats Calculation
     final activeMembersCount = membershipProvider.memberships
@@ -122,6 +123,17 @@ class DashboardScreen extends StatelessWidget {
                 const SnackBar(content: Text('Settings (TODO)')),
               );
             },
+          ),
+          // NEW: Logout Button
+          IconButton(
+            icon: Icon(Icons.logout, color: Colors.grey[700]),
+            onPressed: () {
+              Provider.of<AuthProvider>(context, listen: false).logout();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Logged out successfully.')),
+              );
+            },
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -252,7 +264,6 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            // TODO: Replace with dynamic fetching of recent activities (e.g., last 3 customers, attendance, bookings)
             _buildActivityItem(
               name: 'New customer signed up',
               time: '2 minutes ago',
@@ -315,13 +326,14 @@ class DashboardScreen extends StatelessWidget {
             label: 'Attendance',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.assignment), // Changed to classes
+            icon: Icon(Icons.assignment),
             label: 'Classes',
           ),
         ],
         onTap: (index) {
           switch (index) {
-            case 0: // Dashboard - already here
+            case 0:
+              Navigator.pushReplacementNamed(context, '/dashboard');
               break;
             case 1:
               Navigator.pushNamed(context, '/customers');
@@ -330,7 +342,7 @@ class DashboardScreen extends StatelessWidget {
               Navigator.pushNamed(context, '/attendance');
               break;
             case 3:
-              Navigator.pushNamed(context, '/classes'); // Changed to classes
+              Navigator.pushNamed(context, '/classes');
               break;
           }
         },
@@ -527,7 +539,7 @@ class DashboardScreen extends StatelessWidget {
       {'title': 'Attendance', 'icon': Icons.check_circle_outline, 'route': '/attendance'},
       {'title': 'Expenses', 'icon': Icons.money_off, 'route': '/expenses'},
       {'title': 'Finance Report', 'icon': Icons.pie_chart, 'route': '/finance_report'},
-      {'title': 'Equipment', 'icon': Icons.fitness_center_outlined, 'route': '/equipment'}, // NEW
+      {'title': 'Equipment', 'icon': Icons.fitness_center_outlined, 'route': '/equipment'},
     ];
 
     return GridView.builder(

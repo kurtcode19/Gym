@@ -18,7 +18,11 @@ import 'package:gym/providers/product_provider.dart';
 import 'package:gym/providers/sale_provider.dart';
 import 'package:gym/providers/payment_provider.dart';
 import 'package:gym/providers/expense_provider.dart';
-import 'package:gym/providers/equipment_provider.dart'; // NEW
+import 'package:gym/providers/equipment_provider.dart';
+
+// Auth system
+import 'package:gym/auth/auth_service.dart';
+import 'package:gym/auth/auth_provider.dart';
 
 // Screens
 import 'package:gym/screens/customers_screen.dart';
@@ -46,9 +50,13 @@ import 'package:gym/screens/add_attendance_screen.dart';
 import 'package:gym/screens/expenses_screen.dart';
 import 'package:gym/screens/add_expense_screen.dart';
 import 'package:gym/screens/finance_report_screen.dart';
-import 'package:gym/screens/equipment_screen.dart'; // NEW
-import 'package:gym/screens/add_equipment_screen.dart'; // NEW
+import 'package:gym/screens/equipment_screen.dart';
+import 'package:gym/screens/add_equipment_screen.dart';
 import 'package:gym/screens/dashboard_screen.dart';
+
+// Auth Screens
+import 'package:gym/screens/auth/onboarding_screen.dart';
+import 'package:gym/screens/auth/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,8 +82,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SaleProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => PaymentProvider(DatabaseHelper())),
         ChangeNotifierProvider(create: (_) => ExpenseProvider(DatabaseHelper())),
-        // NEW Provider for Equipment Management
         ChangeNotifierProvider(create: (_) => EquipmentProvider(DatabaseHelper())),
+        ChangeNotifierProvider(create: (_) => AuthProvider(AuthService())),
       ],
       child: MaterialApp(
         title: 'Jay\'s Fitness Gym',
@@ -108,10 +116,10 @@ class MyApp extends StatelessWidget {
               borderSide: const BorderSide(color: Colors.deepOrange, width: 2.0),
             ),
             labelStyle: TextStyle(color: Colors.blueGrey[700]),
-            hintStyle: TextStyle(color: Colors.blueGrey[400]),
+            hintStyle: TextStyle(color: Colors.grey[400]), // Adjusted for contrast on white background of auth screens
             contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
           ),
-          cardTheme: CardThemeData(
+          cardTheme: CardThemeData( // Corrected type from CardThemeData
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
@@ -129,10 +137,32 @@ class MyApp extends StatelessWidget {
           ),
           colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blueGrey).copyWith(secondary: Colors.amber),
         ),
-        // Define initial routes
-        initialRoute: '/',
+        // Use home property to handle initial routing based on authentication state
+        home: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            if (authProvider.isLoading) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            } else if (!authProvider.isOnboarded) {
+              return const OnboardingScreen();
+            } else if (!authProvider.isAuthenticated) {
+              return const LoginScreen();
+            } else {
+              // Once authenticated, navigate to DashboardScreen
+              return const DashboardScreen();
+            }
+          },
+        ),
+        // Routes for other screens
         routes: {
-          '/': (context) => const DashboardScreen(),
+          // Note: '/' route is now handled by the `home` widget's logic
+          // You can define explicit routes for auth screens if you need to push them
+          // e.g., for "Forgot PIN" flow that might temporarily push LoginScreen
+          '/onboarding': (context) => const OnboardingScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/dashboard': (context) => const DashboardScreen(), // Explicit dashboard route
+
           '/customers': (context) => const CustomersScreen(),
           '/add_customer': (context) => const AddCustomerScreen(),
           '/membership_plans': (context) => const MembershipPlansScreen(),
@@ -158,7 +188,6 @@ class MyApp extends StatelessWidget {
           '/expenses': (context) => const ExpensesScreen(),
           '/add_expense': (context) => const AddExpenseScreen(),
           '/finance_report': (context) => const FinanceReportScreen(),
-          // NEW Routes for Equipment Management
           '/equipment': (context) => const EquipmentScreen(),
           '/add_equipment': (context) => const AddEquipmentScreen(),
         },

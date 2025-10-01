@@ -44,7 +44,7 @@ dependencies:
   # Utilities
   intl: ^0.19.0 # For date and number formatting
   uuid: ^4.2.1 # For generating unique IDs
-
+  shared_preferences: ^2.2.2 # NEW: For local data storage (e.g., authentication status, PIN)
   # UI/Charts
   fl_chart: ^0.65.0 # For data visualization (e.g., dashboard)
   google_fonts: ^6.1.0 # For custom fonts
