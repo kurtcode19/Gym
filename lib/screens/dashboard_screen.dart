@@ -1,10 +1,9 @@
-// lib/screens/dashboard_screen.dart - Modern UI Design - UPDATED CONTENT
-
+// lib/screens/dashboard_screen.dart - Modern UI/UX Enhanced
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
-// Import providers to fetch dynamic data
+// Import providers
 import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/membership_provider.dart';
 import 'package:gym/providers/attendance_provider.dart';
@@ -12,15 +11,13 @@ import 'package:gym/providers/class_provider.dart';
 import 'package:gym/providers/sale_provider.dart';
 import 'package:gym/providers/payment_provider.dart';
 import 'package:gym/providers/equipment_provider.dart';
-import 'package:gym/auth/auth_provider.dart'; // NEW: For logout functionality
-
+import 'package:gym/auth/auth_provider.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Watch providers to get current state for dynamic stats
     final customerProvider = Provider.of<CustomerProvider>(context);
     final membershipProvider = Provider.of<MembershipProvider>(context);
     final attendanceProvider = Provider.of<AttendanceProvider>(context);
@@ -29,37 +26,40 @@ class DashboardScreen extends StatelessWidget {
     final paymentProvider = Provider.of<PaymentProvider>(context);
     final equipmentProvider = Provider.of<EquipmentProvider>(context);
 
-    // Dynamic Stats Calculation
+    // Dynamic values
     final activeMembersCount = membershipProvider.memberships
-        .where((m) => m.membership.status == 'Active' && m.membership.endDate.isAfter(DateTime.now()))
+        .where((m) => m.membership.status == 'Active' &&
+            m.membership.endDate.isAfter(DateTime.now()))
         .length;
 
     final today = DateTime.now();
-    final todaySales = saleProvider.sales.where(
-      (s) => s.sale.saleDate.year == today.year &&
-             s.sale.saleDate.month == today.month &&
-             s.sale.saleDate.day == today.day,
-    );
-    final todayPayments = paymentProvider.payments.where(
-      (p) => p.payment.paymentDate.year == today.year &&
-             p.payment.paymentDate.month == today.month &&
-             p.payment.paymentDate.day == today.day,
-    );
-    final todaysRevenue = todaySales.fold(0.0, (sum, sale) => sum + sale.sale.totalAmount) +
-                         todayPayments.fold(0.0, (sum, payment) => sum + payment.payment.amount);
+    final todaySales = saleProvider.sales.where((s) =>
+        s.sale.saleDate.year == today.year &&
+        s.sale.saleDate.month == today.month &&
+        s.sale.saleDate.day == today.day);
 
+    final todayPayments = paymentProvider.payments.where((p) =>
+        p.payment.paymentDate.year == today.year &&
+        p.payment.paymentDate.month == today.month &&
+        p.payment.paymentDate.day == today.day);
 
-    final todayCheckins = attendanceProvider.attendanceRecords.where(
-      (a) => a.attendance.checkinTime.year == today.year &&
-             a.attendance.checkinTime.month == today.month &&
-             a.attendance.checkinTime.day == today.day,
-    ).length;
+    final todaysRevenue = todaySales.fold(
+            0.0, (sum, sale) => sum + sale.sale.totalAmount) +
+        todayPayments.fold(0.0, (sum, payment) => sum + payment.payment.amount);
 
-    final todayClasses = classProvider.classes.where(
-      (c) => c.gymClass.scheduleTime.year == today.year &&
-             c.gymClass.scheduleTime.month == today.month &&
-             c.gymClass.scheduleTime.day == today.day,
-    ).length;
+    final todayCheckins = attendanceProvider.attendanceRecords
+        .where((a) =>
+            a.attendance.checkinTime.year == today.year &&
+            a.attendance.checkinTime.month == today.month &&
+            a.attendance.checkinTime.day == today.day)
+        .length;
+
+    final todayClasses = classProvider.classes
+        .where((c) =>
+            c.gymClass.scheduleTime.year == today.year &&
+            c.gymClass.scheduleTime.month == today.month &&
+            c.gymClass.scheduleTime.day == today.day)
+        .length;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -70,303 +70,74 @@ class DashboardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Jay\'s Fitness',
+              "Hi, Welcome Back 👋",
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w400),
             ),
             Text(
-              'Gym Management',
+              "Jay's Fitness",
               style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800]),
             ),
           ],
         ),
         actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(Icons.notifications_outlined, color: Colors.grey[700]),
-                onPressed: () {
-                  // TODO: Implement notifications logic
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notifications (TODO)')),
-                  );
-                },
-              ),
-              Positioned(
-                right: 11,
-                top: 11,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 14,
-                    minHeight: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
           IconButton(
-            icon: Icon(Icons.settings_outlined, color: Colors.grey[700]),
+            icon: const Icon(Icons.notifications_outlined),
+            color: Colors.grey[700],
             onPressed: () {
-              // TODO: Implement settings logic
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings (TODO)')),
-              );
+                  const SnackBar(content: Text("Notifications (TODO)")));
             },
           ),
-          // NEW: Logout Button
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.grey[700]),
+            icon: const Icon(Icons.settings_outlined),
+            color: Colors.grey[700],
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Settings (TODO)")));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            color: Colors.redAccent,
+            tooltip: "Logout",
             onPressed: () {
               Provider.of<AuthProvider>(context, listen: false).logout();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logged out successfully.')),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text("Logged out successfully.")));
             },
-            tooltip: 'Logout',
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Statistics Cards
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    title: 'Active Members',
-                    value: activeMembersCount.toString(), // Dynamic
-                    icon: Icons.people_outline,
-                    color: Colors.blue[100]!,
-                    iconColor: Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    title: 'Today\'s Revenue',
-                    value: NumberFormat.currency(symbol: '₱').format(todaysRevenue), // Dynamic
-                    icon: Icons.attach_money,
-                    color: Colors.green[100]!,
-                    iconColor: Colors.green,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    title: 'Check-ins Today',
-                    value: todayCheckins.toString(), // Dynamic
-                    icon: Icons.check_circle_outline,
-                    color: Colors.orange[100]!,
-                    iconColor: Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    title: 'Classes Today',
-                    value: todayClasses.toString(), // Dynamic
-                    icon: Icons.event_note,
-                    color: Colors.purple[100]!,
-                    iconColor: Colors.purple,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            // Quick Actions Section
-            Text(
-              'Quick Actions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildQuickActionButton(
-                    context,
-                    title: 'Add Member',
-                    icon: Icons.person_add,
-                    color: Colors.blue,
-                    route: '/add_customer',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildQuickActionButton(
-                    context,
-                    title: 'Check In',
-                    icon: Icons.check_circle,
-                    color: Colors.green,
-                    route: '/add_attendance',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildQuickActionButton(
-                    context,
-                    title: 'Book Class',
-                    icon: Icons.event,
-                    color: Colors.purple,
-                    route: '/add_class_booking',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildQuickActionButton(
-                    context,
-                    title: 'Record Sale',
-                    icon: Icons.shopping_cart,
-                    color: Colors.orange,
-                    route: '/add_sale',
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            // Recent Activity Section
-            Text(
-              'Recent Activity',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildActivityItem(
-              name: 'New customer signed up',
-              time: '2 minutes ago',
-              icon: Icons.person_add,
-              color: Colors.blue,
-            ),
-            _buildActivityItem(
-              name: 'Member checked in',
-              time: '5 minutes ago',
-              icon: Icons.check_circle,
-              color: Colors.green,
-            ),
-            _buildActivityItem(
-              name: 'Class booking received',
-              time: '10 minutes ago',
-              icon: Icons.event,
-              color: Colors.purple,
-            ),
-            _buildActivityItem(
-              name: 'Product sale recorded',
-              time: '15 minutes ago',
-              icon: Icons.shopping_cart,
-              color: Colors.orange,
-            ),
-
-
-            const SizedBox(height: 32),
-
-            // All Management Options
-            Text(
-              'Management',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            _buildManagementGrid(context),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        currentIndex: 0, // Always start at dashboard
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Members',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle),
-            label: 'Attendance',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Classes',
-          ),
-        ],
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              Navigator.pushReplacementNamed(context, '/dashboard');
-              break;
-            case 1:
-              Navigator.pushNamed(context, '/customers');
-              break;
-            case 2:
-              Navigator.pushNamed(context, '/attendance');
-              break;
-            case 3:
-              Navigator.pushNamed(context, '/classes');
-              break;
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
+// ---- STATS CARDS ----
+Column(
+  children: [
+    // Highlighted Profit Card
+    Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [const Color.fromARGB(255, 65, 182, 71), const Color.fromARGB(255, 40, 122, 106)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.green.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -374,234 +145,316 @@ class DashboardScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: iconColor,
-                ),
+
               ),
+
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
+            NumberFormat.currency(symbol: "₱").format(todaysRevenue),
+            style: const TextStyle(
+              fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: iconColor,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Today's Revenue",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "${todaySales.length} sales, ${todayPayments.length} payments",
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.8),
             ),
           ),
         ],
       ),
-    );
-  }
+    ),
+    const SizedBox(height: 16),
 
-  Widget _buildQuickActionButton(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required Color color,
-    required String route,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    // Row with 3 cards below
+    Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            title: "Active Members",
+            value: activeMembersCount.toString(),
+            icon: Icons.people,
+            color: Colors.blue,
           ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.pushNamed(context, route);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          elevation: 0,
         ),
-        child: Column(
-          children: [
-            Icon(icon, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            title: "Check-ins Today",
+            value: todayCheckins.toString(),
+            icon: Icons.check_circle,
+            color: Colors.orange,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            title: "Classes Today",
+            value: todayClasses.toString(),
+            icon: Icons.event_note,
+            color: Colors.purple,
+          ),
+        ),
+      ],
+    ),
+  ],
+),
+
+            // ---- QUICK ACTIONS ----
+            Text("Quick Actions",
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 4,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 12,
+              children: [
+                _buildQuickAction(context,
+                    "Add Member", Icons.person_add, Colors.blue, "/add_customer"),
+                _buildQuickAction(context,
+                    "Check In", Icons.login, Colors.green, "/add_attendance"),
+                _buildQuickAction(context,
+                    "Book Class", Icons.event, Colors.purple, "/add_class_booking"),
+                _buildQuickAction(context,
+                    "Record Sale", Icons.shopping_cart, Colors.orange, "/add_sale"),
+              ],
             ),
+
+            const SizedBox(height: 28),
+
+
+
+            // ---- MANAGEMENT ----
+            Text("Management",
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            _buildManagementGrid(context),
           ],
         ),
       ),
-    );
-  }
 
-  Widget _buildActivityItem({
-    required String name,
-    required String time,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      // ---- BOTTOM NAV ----
+bottomNavigationBar: Container(
+  decoration: BoxDecoration(
+    color: Colors.white,
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.1),
+        blurRadius: 20,
+        offset: const Offset(0, -5),
       ),
+    ],
+  ),
+  child: SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: color,
-            ),
+          _buildNavItem(
+            context,
+            icon: Icons.dashboard_rounded,
+            label: "Dashboard",
+            isActive: true,
+            route: "/dashboard",
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
+          _buildNavItem(
+            context,
+            icon: Icons.people_rounded,
+            label: "Members",
+            isActive: false,
+            route: "/customers",
           ),
+          _buildNavItem(
+            context,
+            icon: Icons.check_circle_rounded,
+            label: "Attendance",
+            isActive: false,
+            route: "/attendance",
+          ),
+          _buildNavItem(
+            context,
+            icon: Icons.event_note_rounded,
+            label: "Classes",
+            isActive: false,
+            route: "/classes",
+          ),
+        ],
+      ),
+    ),
+  ),
+)
+    );
+  }
+  Widget _buildNavItem(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required bool isActive,
+      required String route}) {
+    final color = isActive ? Colors.blue : Colors.grey[600];
+    return GestureDetector(
+      onTap: () {
+        if (!isActive) {
+          Navigator.pushNamed(context, route);
+        }
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 4),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10,
+                  color: color,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400)),
         ],
       ),
     );
   }
+  // ---- CUSTOM WIDGETS ----
+  Widget _buildStatCard(
+      {required String title,
+      required String value,
+      required IconData icon,
+      required Color color}) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const Spacer(),
+            Icon(Icons.more_vert, color: Colors.grey[400]),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text(value,
+            style: TextStyle(
+                fontSize: 26, fontWeight: FontWeight.bold, color: color)),
+        const SizedBox(height: 6),
+        Text(title,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      ]),
+    );
+  }
 
+  Widget _buildQuickAction(BuildContext context, String title, IconData icon,
+      Color color, String route) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, route),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 28, color: color),
+              const SizedBox(height: 6),
+              Text(title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: color)),
+            ]),
+      ),
+    );
+  }
+
+ 
   Widget _buildManagementGrid(BuildContext context) {
-    final managementItems = [
-      {'title': 'Customers', 'icon': Icons.people, 'route': '/customers'},
-      {'title': 'Plans', 'icon': Icons.fitness_center, 'route': '/membership_plans'},
-      {'title': 'Memberships', 'icon': Icons.card_membership, 'route': '/memberships'},
-      {'title': 'Trainers', 'icon': Icons.person_add_alt_1, 'route': '/trainers'},
-      {'title': 'Classes', 'icon': Icons.assignment, 'route': '/classes'},
-      {'title': 'Bookings', 'icon': Icons.event_available, 'route': '/class_bookings'},
-      {'title': 'Categories', 'icon': Icons.category, 'route': '/product_categories'},
-      {'title': 'Products', 'icon': Icons.shopping_bag, 'route': '/products'},
-      {'title': 'Sales', 'icon': Icons.receipt_long, 'route': '/sales'},
-      {'title': 'Payments', 'icon': Icons.payment, 'route': '/payments'},
-      {'title': 'Attendance', 'icon': Icons.check_circle_outline, 'route': '/attendance'},
-      {'title': 'Expenses', 'icon': Icons.money_off, 'route': '/expenses'},
-      {'title': 'Finance Report', 'icon': Icons.pie_chart, 'route': '/finance_report'},
-      {'title': 'Equipment', 'icon': Icons.fitness_center_outlined, 'route': '/equipment'},
+    final items = [
+      {"title": "Customers", "icon": Icons.people, "route": "/customers"},
+      {"title": "Plans", "icon": Icons.fitness_center, "route": "/membership_plans"},
+      {"title": "Memberships", "icon": Icons.card_membership, "route": "/memberships"},
+      {"title": "Trainers", "icon": Icons.person, "route": "/trainers"},
+      {"title": "Classes", "icon": Icons.assignment, "route": "/classes"},
+      {"title": "Bookings", "icon": Icons.event, "route": "/class_bookings"},
+      {"title": "Products", "icon": Icons.shopping_bag, "route": "/products"},
+      {"title": "Sales", "icon": Icons.receipt, "route": "/sales"},
+      {"title": "Payments", "icon": Icons.payment, "route": "/payments"},
+      {"title": "Expenses", "icon": Icons.money_off, "route": "/expenses"},
+      {"title": "Reports", "icon": Icons.pie_chart, "route": "/finance_report"},
+      {"title": "Equipment", "icon": Icons.fitness_center_outlined, "route": "/equipment"},
     ];
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+        crossAxisCount: 3,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 2.5,
+        childAspectRatio: 1.3,
       ),
-      itemCount: managementItems.length,
-      itemBuilder: (context, index) {
-        final item = managementItems[index];
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                Navigator.pushNamed(context, item['route'] as String);
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(
-                      item['icon'] as IconData,
-                      size: 24,
-                      color: Colors.grey[700],
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item['title'] as String,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Colors.grey[400],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      itemCount: items.length,
+      itemBuilder: (context, i) {
+        final item = items[i];
+        return GestureDetector(
+          onTap: () => Navigator.pushNamed(context, item["route"] as String),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2))
+                ]),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(item["icon"] as IconData,
+                      size: 28, color: Colors.blueGrey),
+                  const SizedBox(height: 10),
+                  Text(item['title']! as String, textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w600)),
+                ]),
           ),
         );
       },
