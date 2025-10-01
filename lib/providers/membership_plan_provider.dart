@@ -1,7 +1,7 @@
-// lib/providers/membership_plan_provider.dart
+// lib/providers/membership_plan_provider.dart - UPDATED CONTENT
 import 'package:flutter/material.dart';
-import 'package:gym/models/membership_plan.dart';
-import 'package:gym/providers/database_helper.dart';
+import 'package:gym/models/membership_plan.dart'; // Corrected import
+import 'package:gym/providers/database_helper.dart'; // Corrected import
 
 class MembershipPlanProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
@@ -76,7 +76,9 @@ class MembershipPlanProvider with ChangeNotifier {
     } else {
       _filteredPlans = _plans.where((plan) {
         final lowerCaseQuery = query.toLowerCase();
-        return plan.planName.toLowerCase().contains(lowerCaseQuery);
+        return plan.planName.toLowerCase().contains(lowerCaseQuery) ||
+               plan.durationUnit.toDisplayString().toLowerCase().contains(lowerCaseQuery) ||
+               plan.durationValue.toString().contains(lowerCaseQuery);
       }).toList();
     }
     notifyListeners();

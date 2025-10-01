@@ -1,9 +1,9 @@
-// lib/screens/add_membership_plan_screen.dart
+// lib/screens/add_membership_plan_screen.dart - UPDATED CONTENT
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
-import 'package:gym/models/membership_plan.dart';
-import 'package:gym/providers/membership_plan_provider.dart';
+import 'package:gym/models/membership_plan.dart'; // Corrected import
+import 'package:gym/providers/membership_plan_provider.dart'; // Corrected import
 
 class AddMembershipPlanScreen extends StatefulWidget {
   final MembershipPlan? plan; // Optional: for editing existing plan
@@ -21,6 +21,21 @@ class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
   Widget build(BuildContext context) {
     final isEditing = widget.plan != null;
 
+    Map<String, dynamic> initialValues = {};
+    if (isEditing) {
+      initialValues = {
+        'plan_name': widget.plan!.planName,
+        'monthly_fee': widget.plan!.monthlyFee.toString(),
+        'duration_value': widget.plan!.durationValue.toString(),
+        'duration_unit': widget.plan!.durationUnit, // Directly use enum value
+      };
+    } else {
+      initialValues = {
+        'duration_value': '12', // Default to 12
+        'duration_unit': DurationUnit.months, // Default to Months
+      };
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Membership Plan' : 'Add Membership Plan'),
@@ -29,14 +44,8 @@ class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
         padding: const EdgeInsets.all(16.0),
         child: FormBuilder(
           key: _formKey,
-          initialValue: isEditing
-              ? {
-                  'plan_name': widget.plan!.planName,
-                  'monthly_fee': widget.plan!.monthlyFee.toString(),
-                  'duration': widget.plan!.duration.toString(),
-                }
-              : {},
-          child: Column(
+          initialValue: initialValues,
+          child: ListView( // Changed to ListView for scrollability
             children: [
               FormBuilderTextField(
                 name: 'plan_name',
@@ -46,7 +55,7 @@ class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
               const SizedBox(height: 16),
               FormBuilderTextField(
                 name: 'monthly_fee',
-                decoration: const InputDecoration(labelText: 'Monthly Fee (\$)', hintText: 'e.g., 50.00'),
+                decoration: const InputDecoration(labelText: 'Fee (\$)', hintText: 'e.g., 50.00'),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Monthly fee cannot be empty';
@@ -56,16 +65,38 @@ class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              FormBuilderTextField(
-                name: 'duration',
-                decoration: const InputDecoration(labelText: 'Duration (months)', hintText: 'e.g., 12'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Duration cannot be empty';
-                  if (int.tryParse(value) == null) return 'Invalid number';
-                  if (int.parse(value) <= 0) return 'Duration must be positive';
-                  return null;
-                },
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: FormBuilderTextField(
+                      name: 'duration_value',
+                      decoration: const InputDecoration(labelText: 'Duration Value', hintText: 'e.g., 12'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Value cannot be empty';
+                        if (int.tryParse(value) == null) return 'Invalid number';
+                        if (int.parse(value) <= 0) return 'Value must be positive';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: FormBuilderDropdown<DurationUnit>(
+                      name: 'duration_unit',
+                      decoration: const InputDecoration(labelText: 'Unit'),
+                      validator: (value) => value == null ? 'Unit cannot be empty' : null,
+                      items: DurationUnit.values
+                          .map((unit) => DropdownMenuItem<DurationUnit>(
+                                value: unit,
+                                child: Text(unit.toDisplayString()),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
               ElevatedButton(
@@ -76,7 +107,8 @@ class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
                       planId: isEditing ? widget.plan!.planId : null,
                       planName: data['plan_name'],
                       monthlyFee: double.parse(data['monthly_fee']),
-                      duration: int.parse(data['duration']),
+                      durationValue: int.parse(data['duration_value']),
+                      durationUnit: data['duration_unit'] as DurationUnit,
                     );
 
                     if (isEditing) {

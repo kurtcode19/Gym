@@ -25,7 +25,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'gym.db');
     return await openDatabase(
       path,
-      version: 1, // Keep version 1 for now unless schema changes.
+      version: 2, // Change from 1 to 2
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -47,14 +47,16 @@ class DatabaseHelper {
     ''');
 
     // MEMBERSHIP_PLAN Table
-    await db.execute('''
-      CREATE TABLE MEMBERSHIP_PLAN (
-        plan_id TEXT PRIMARY KEY,
-        plan_name TEXT NOT NULL,
-        monthly_fee REAL NOT NULL,
-        duration INTEGER NOT NULL
-      )
-    ''');
+// MEMBERSHIP_PLAN Table - UPDATED SCHEMA
+await db.execute('''
+  CREATE TABLE MEMBERSHIP_PLAN (
+    plan_id TEXT PRIMARY KEY,
+    plan_name TEXT NOT NULL,
+    monthly_fee REAL NOT NULL,
+    duration_value INTEGER NOT NULL,
+    duration_unit TEXT NOT NULL
+  )
+''');
 
     // MEMBERSHIP Table
     await db.execute('''
@@ -207,8 +209,40 @@ class DatabaseHelper {
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    print('Database upgraded from version $oldVersion to $newVersion');
-    // Implement migration logic if future schema changes are introduced
+    print('Database upgrading from version $oldVersion to $newVersion');
+    
+    if (oldVersion == 1 && newVersion == 2) {
+      // Create temporary table with new schema
+      await db.execute('''
+        CREATE TABLE MEMBERSHIP_PLAN_NEW (
+          plan_id TEXT PRIMARY KEY,
+          plan_name TEXT NOT NULL,
+          monthly_fee REAL NOT NULL,
+          duration_value INTEGER NOT NULL,
+          duration_unit TEXT NOT NULL
+        )
+      ''');
+      
+      // Copy existing data with default values for new columns
+      await db.execute('''
+        INSERT INTO MEMBERSHIP_PLAN_NEW 
+        SELECT 
+          plan_id, 
+          plan_name, 
+          monthly_fee, 
+          12 as duration_value, 
+          'months' as duration_unit 
+        FROM MEMBERSHIP_PLAN
+      ''');
+      
+      // Drop old table
+      await db.execute('DROP TABLE MEMBERSHIP_PLAN');
+      
+      // Rename new table to original name
+      await db.execute('ALTER TABLE MEMBERSHIP_PLAN_NEW RENAME TO MEMBERSHIP_PLAN');
+      
+      print('MEMBERSHIP_PLAN table upgraded successfully');
+    }
   }
 
   // --- CRUD Methods for CUSTOMER Table ---
@@ -241,19 +275,22 @@ class DatabaseHelper {
     );
   }
 
-  // --- CRUD Methods for MEMBERSHIP_PLAN Table ---
+  // --- CRUD Methods for MEMBERSHIP_PLAN Table --- MODIFIED
   Future<int> insertMembershipPlan(Map<String, dynamic> plan) async {
     final db = await database;
+    // Ensure the map contains 'duration_value' and 'duration_unit'
     return await db.insert('MEMBERSHIP_PLAN', plan, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getMembershipPlans() async {
     final db = await database;
+    // Still returns raw maps, the model's fromJson handles parsing
     return await db.query('MEMBERSHIP_PLAN', orderBy: 'plan_name');
   }
 
   Future<int> updateMembershipPlan(Map<String, dynamic> plan) async {
     final db = await database;
+    // Ensure the map contains 'duration_value' and 'duration_unit'
     return await db.update(
       'MEMBERSHIP_PLAN',
       plan,
@@ -270,7 +307,6 @@ class DatabaseHelper {
       whereArgs: [planId],
     );
   }
-
   // --- CRUD Methods for MEMBERSHIP Table ---
   Future<int> insertMembership(Map<String, dynamic> membership) async {
     final db = await database;

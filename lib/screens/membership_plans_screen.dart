@@ -1,4 +1,4 @@
-// lib/screens/membership_plans_screen.dart
+// lib/screens/membership_plans_screen.dart - UPDATED CONTENT
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gym/providers/membership_plan_provider.dart';
@@ -46,11 +46,10 @@ class MembershipPlansScreen extends StatelessWidget {
                         child: ListTile(
                           title: Text(plan.planName),
                           subtitle: Text(
-                            '${NumberFormat.currency(symbol: '\$').format(plan.monthlyFee)}/month '
-                            '• ${plan.duration} months'
+                            '${NumberFormat.currency(symbol: '\$').format(plan.monthlyFee)} • '
+                            '${plan.durationValue} ${plan.durationUnit.toDisplayString()}${plan.durationValue > 1 ? 's' : ''}'
                           ),
                           onTap: () {
-                            // Navigate to edit screen
                             Navigator.push(
                               context,
                               MaterialPageRoute(
