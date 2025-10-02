@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:gym/providers/product_category_provider.dart';
 import 'package:gym/models/product_category.dart';
 import 'package:gym/screens/add_product_category_screen.dart';
+import 'package:gym/screens/products_screen.dart'; // Add this import
 
 class ProductCategoriesScreen extends StatelessWidget {
   const ProductCategoriesScreen({super.key});
@@ -67,19 +68,39 @@ class ProductCategoriesScreen extends StatelessWidget {
                             'Status: ${category.status ?? 'N/A'}'
                           ),
                           onTap: () {
-                            // Navigate to edit screen
+                            // Navigate to products screen filtered by this category
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => AddProductCategoryScreen(category: category),
+                                builder: (context) => ProductsScreen(
+                                  filteredCategoryId: category.categoryId,
+                                  filteredCategoryName: category.categoryName,
+                                ),
                               ),
                             );
                           },
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.redAccent),
-                            onPressed: () {
-                              _confirmDelete(context, categoryProvider, category);
-                            },
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                onPressed: () {
+                                  // Navigate to edit screen
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddProductCategoryScreen(category: category),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                onPressed: () {
+                                  _confirmDelete(context, categoryProvider, category);
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       );

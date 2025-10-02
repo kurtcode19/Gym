@@ -6,8 +6,40 @@ import 'package:gym/models/product.dart';
 import 'package:gym/screens/add_product_screen.dart';
 import 'package:intl/intl.dart';
 
-class ProductsScreen extends StatelessWidget {
-  const ProductsScreen({super.key});
+class ProductsScreen extends StatefulWidget {
+  final String? filteredCategoryId;
+  final String? filteredCategoryName;
+  
+  const ProductsScreen({
+    super.key,
+    this.filteredCategoryId,
+    this.filteredCategoryName,
+  });
+
+  @override
+  State<ProductsScreen> createState() => _ProductsScreenState();
+}
+
+class _ProductsScreenState extends State<ProductsScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Apply category filter when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.filteredCategoryId != null) {
+        final productProvider = Provider.of<ProductProvider>(context, listen: false);
+        productProvider.filterProductsByCategory(widget.filteredCategoryId);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
@@ -26,29 +58,100 @@ class ProductsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Products'),
+        title: widget.filteredCategoryId != null 
+            ? Text('Products - ${widget.filteredCategoryName}')
+            : const Text('Products'),
+        leading: widget.filteredCategoryId != null 
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              )
+            : null,
       ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
-              decoration: const InputDecoration(
+              controller: _searchController,
+              decoration: InputDecoration(
                 hintText: 'Search products...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          Provider.of<ProductProvider>(context, listen: false)
+                              .searchProducts('', categoryId: widget.filteredCategoryId);
+                        },
+                      )
+                    : null,
               ),
               onChanged: (query) {
-                Provider.of<ProductProvider>(context, listen: false).searchProducts(query);
+                Provider.of<ProductProvider>(context, listen: false)
+                    .searchProducts(query, categoryId: widget.filteredCategoryId);
               },
             ),
           ),
+          if (widget.filteredCategoryId != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                children: [
+                  Chip(
+                    label: Text('Category: ${widget.filteredCategoryName}'),
+                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    deleteIcon: const Icon(Icons.close),
+                    onDeleted: () {
+                      // Clear category filter and navigate back
+                      Provider.of<ProductProvider>(context, listen: false).clearFilters();
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: Consumer<ProductProvider>(
               builder: (context, productProvider, child) {
                 if (productProvider.isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (productProvider.products.isEmpty) {
-                  return const Center(child: Text('No products found.'));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.inventory_2, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          widget.filteredCategoryId != null 
+                              ? 'No products found in ${widget.filteredCategoryName} category'
+                              : 'No products found.',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        if (widget.filteredCategoryId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16.0),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AddProductScreen(
+                                      initialCategoryId: widget.filteredCategoryId,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('Add Product to this Category'),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
                 } else {
                   return ListView.builder(
                     itemCount: productProvider.products.length,
@@ -69,9 +172,10 @@ class ProductsScreen extends StatelessWidget {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Category: ${detailedProduct.categoryName ?? 'Uncategorized'}',
-                              ),
+                              if (widget.filteredCategoryId == null) // Only show category if not filtered
+                                Text(
+                                  'Category: ${detailedProduct.categoryName ?? 'Uncategorized'}',
+                                ),
                               Text(
                                 'Price: ${NumberFormat.currency(symbol: '\$').format(product.unitPrice)} '
                                 '• Stock: ${product.stockQuantity}',
@@ -79,7 +183,7 @@ class ProductsScreen extends StatelessWidget {
                               Text('Status: ${product.status ?? 'N/A'}'),
                             ],
                           ),
-                          isThreeLine: true,
+                          isThreeLine: widget.filteredCategoryId == null,
                           onTap: () {
                             // Navigate to edit screen
                             Navigator.push(
@@ -110,7 +214,9 @@ class ProductsScreen extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const AddProductScreen(),
+              builder: (context) => AddProductScreen(
+                initialCategoryId: widget.filteredCategoryId,
+              ),
             ),
           );
         },

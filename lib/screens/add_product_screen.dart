@@ -10,7 +10,7 @@ import 'package:gym/providers/product_category_provider.dart';
 class AddProductScreen extends StatefulWidget {
   final Product? product; // Optional: for editing existing product
 
-  const AddProductScreen({super.key, this.product});
+  const AddProductScreen({super.key, this.product, String? initialCategoryId});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();

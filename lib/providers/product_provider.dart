@@ -27,6 +27,7 @@ class ProductProvider with ChangeNotifier {
   List<DetailedProduct> _products = [];
   List<DetailedProduct> _filteredProducts = [];
   bool _isLoading = false;
+  String? _currentCategoryFilter;
 
   ProductProvider(this._dbHelper) {
     fetchProducts();
@@ -34,18 +35,27 @@ class ProductProvider with ChangeNotifier {
 
   List<DetailedProduct> get products => _filteredProducts;
   bool get isLoading => _isLoading;
+  String? get currentCategoryFilter => _currentCategoryFilter;
 
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
   }
 
-  Future<void> fetchProducts() async {
+  Future<void> fetchProducts({String? categoryId}) async {
     _setLoading(true);
     try {
       final productMaps = await _dbHelper.getDetailedProducts();
       _products = productMaps.map((map) => DetailedProduct.fromMap(map)).toList();
-      _filteredProducts = List.from(_products);
+      
+      // Apply category filter if provided
+      if (categoryId != null) {
+        _filteredProducts = _products.where((p) => p.product.categoryId == categoryId).toList();
+        _currentCategoryFilter = categoryId;
+      } else {
+        _filteredProducts = List.from(_products);
+        _currentCategoryFilter = null;
+      }
     } catch (e) {
       print('Error fetching detailed products: $e');
     } finally {
@@ -56,7 +66,7 @@ class ProductProvider with ChangeNotifier {
   Future<void> addProduct(Product product) async {
     try {
       await _dbHelper.insertProduct(product.toJson());
-      await fetchProducts(); // Re-fetch all to get the detailed view
+      await fetchProducts(categoryId: _currentCategoryFilter); // Re-fetch with current filter
     } catch (e) {
       print('Error adding product: $e');
     }
@@ -65,7 +75,7 @@ class ProductProvider with ChangeNotifier {
   Future<void> updateProduct(Product product) async {
     try {
       await _dbHelper.updateProduct(product.toJson());
-      await fetchProducts(); // Re-fetch all to get the detailed view
+      await fetchProducts(categoryId: _currentCategoryFilter); // Re-fetch with current filter
     } catch (e) {
       print('Error updating product: $e');
     }
@@ -82,17 +92,45 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  void searchProducts(String query) {
-    if (query.isEmpty) {
+  void searchProducts(String query, {String? categoryId}) {
+    if (query.isEmpty && categoryId == null) {
       _filteredProducts = List.from(_products);
+      _currentCategoryFilter = null;
     } else {
       _filteredProducts = _products.where((detailedProduct) {
-        final lowerCaseQuery = query.toLowerCase();
-        return detailedProduct.product.productName.toLowerCase().contains(lowerCaseQuery) ||
-               (detailedProduct.categoryName?.toLowerCase().contains(lowerCaseQuery) ?? false) ||
-               (detailedProduct.product.description?.toLowerCase().contains(lowerCaseQuery) ?? false);
+        // Apply category filter
+        final matchesCategory = categoryId == null || detailedProduct.product.categoryId == categoryId;
+        
+        // Apply search query filter
+        final matchesSearch = query.isEmpty ? true : 
+            detailedProduct.product.productName.toLowerCase().contains(query.toLowerCase()) ||
+            (detailedProduct.categoryName?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
+            (detailedProduct.product.description?.toLowerCase().contains(query.toLowerCase()) ?? false);
+        
+        return matchesCategory && matchesSearch;
       }).toList();
+      
+      _currentCategoryFilter = categoryId;
     }
+    notifyListeners();
+  }
+
+  // Method to filter products by category only (without search)
+  void filterProductsByCategory(String? categoryId) {
+    if (categoryId == null) {
+      _filteredProducts = List.from(_products);
+      _currentCategoryFilter = null;
+    } else {
+      _filteredProducts = _products.where((p) => p.product.categoryId == categoryId).toList();
+      _currentCategoryFilter = categoryId;
+    }
+    notifyListeners();
+  }
+
+  // Method to clear all filters
+  void clearFilters() {
+    _filteredProducts = List.from(_products);
+    _currentCategoryFilter = null;
     notifyListeners();
   }
 }
