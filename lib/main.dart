@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:gym/providers/database_helper.dart';
 import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/membership_plan_provider.dart';
-import 'package:gym/providers/membership_provider.dart';
+import 'package:gym/providers/membership_provider.dart'; // IMPORTANT: This needs to be created first
 import 'package:gym/providers/attendance_provider.dart';
 import 'package:gym/providers/trainer_provider.dart';
 import 'package:gym/providers/class_provider.dart';
@@ -16,7 +16,7 @@ import 'package:gym/providers/class_booking_provider.dart';
 import 'package:gym/providers/product_category_provider.dart';
 import 'package:gym/providers/product_provider.dart';
 import 'package:gym/providers/sale_provider.dart';
-import 'package:gym/providers/payment_provider.dart';
+import 'package:gym/providers/payment_provider.dart'; // This now depends on MembershipProvider
 import 'package:gym/providers/expense_provider.dart';
 import 'package:gym/providers/equipment_provider.dart';
 
@@ -68,21 +68,34 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final databaseHelper = DatabaseHelper(); // Create once here
+
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => CustomerProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => MembershipPlanProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => MembershipProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => AttendanceProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => TrainerProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => ClassProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => ClassBookingProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => ProductCategoryProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => ProductProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => SaleProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => PaymentProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => ExpenseProvider(DatabaseHelper())),
-        ChangeNotifierProvider(create: (_) => EquipmentProvider(DatabaseHelper())),
+        ChangeNotifierProvider(create: (_) => CustomerProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => MembershipPlanProvider(databaseHelper)),
+        // Create MembershipProvider BEFORE PaymentProvider
+        ChangeNotifierProvider(create: (_) => MembershipProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => AttendanceProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => TrainerProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => ClassProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => ClassBookingProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => ProductCategoryProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => ProductProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => SaleProvider(databaseHelper)),
+        // Pass MembershipProvider to PaymentProvider
+        ChangeNotifierProxyProvider<MembershipProvider, PaymentProvider>(
+          create: (context) => PaymentProvider(databaseHelper, Provider.of<MembershipProvider>(context, listen: false)),
+          update: (context, membershipProvider, paymentProvider) {
+            // This is called when MembershipProvider changes.
+            // If PaymentProvider doesn't need to react to changes *in* MembershipProvider,
+            // but just needs its initial instance, this update logic can be simpler.
+            // For now, we'll assume it just needs the instance.
+            return paymentProvider ?? PaymentProvider(databaseHelper, membershipProvider);
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => ExpenseProvider(databaseHelper)),
+        ChangeNotifierProvider(create: (_) => EquipmentProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => AuthProvider(AuthService())),
       ],
       child: MaterialApp(
@@ -116,10 +129,10 @@ class MyApp extends StatelessWidget {
               borderSide: const BorderSide(color: Colors.deepOrange, width: 2.0),
             ),
             labelStyle: TextStyle(color: Colors.blueGrey[700]),
-            hintStyle: TextStyle(color: Colors.grey[400]), // Adjusted for contrast on white background of auth screens
+            hintStyle: TextStyle(color: Colors.grey[400]),
             contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
           ),
-          cardTheme: CardThemeData( // Corrected type from CardThemeData
+          cardTheme: CardThemeData(
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
@@ -137,7 +150,6 @@ class MyApp extends StatelessWidget {
           ),
           colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blueGrey).copyWith(secondary: Colors.amber),
         ),
-        // Use home property to handle initial routing based on authentication state
         home: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             if (authProvider.isLoading) {
@@ -149,19 +161,14 @@ class MyApp extends StatelessWidget {
             } else if (!authProvider.isAuthenticated) {
               return const LoginScreen();
             } else {
-              // Once authenticated, navigate to DashboardScreen
               return const DashboardScreen();
             }
           },
         ),
-        // Routes for other screens
         routes: {
-          // Note: '/' route is now handled by the `home` widget's logic
-          // You can define explicit routes for auth screens if you need to push them
-          // e.g., for "Forgot PIN" flow that might temporarily push LoginScreen
           '/onboarding': (context) => const OnboardingScreen(),
           '/login': (context) => const LoginScreen(),
-          '/dashboard': (context) => const DashboardScreen(), // Explicit dashboard route
+          '/dashboard': (context) => const DashboardScreen(),
 
           '/customers': (context) => const CustomersScreen(),
           '/add_customer': (context) => const AddCustomerScreen(),
@@ -175,7 +182,7 @@ class MyApp extends StatelessWidget {
           '/add_class': (context) => const AddClassScreen(),
           '/class_bookings': (context) => const ClassBookingsScreen(),
           '/add_class_booking': (context) => const AddClassBookingScreen(),
-          '/product_categories': (context) => const ProductCategoriesScreen(),
+          '/product_categories': (context) => const AddProductCategoryScreen(), // Fix: Should be screen, not provider
           '/add_product_category': (context) => const AddProductCategoryScreen(),
           '/products': (context) => const ProductsScreen(),
           '/add_product': (context) => const AddProductScreen(),

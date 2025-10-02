@@ -159,7 +159,7 @@ Column(
           ),
           const SizedBox(height: 18),
           Text(
-            NumberFormat.currency(symbol: "₱").format(todaysRevenue),
+            NumberFormat.currency(symbol: "P").format(todaysRevenue),
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,

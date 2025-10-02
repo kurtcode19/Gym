@@ -1,9 +1,11 @@
-// lib/providers/payment_provider.dart
+// lib/providers/payment_provider.dart - UPDATED CONTENT
+
 import 'package:flutter/material.dart';
 import 'package:gym/models/payment.dart';
 import 'package:gym/providers/database_helper.dart';
 import 'package:gym/models/membership.dart'; // For membership details
 import 'package:gym/models/customer.dart'; // For customer details
+import 'package:gym/providers/membership_provider.dart'; // NEW: Import MembershipProvider
 
 // Model to hold joined payment data for display
 class DetailedPayment {
@@ -37,11 +39,13 @@ class DetailedPayment {
 
 class PaymentProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
+  final MembershipProvider _membershipProvider; // NEW: Dependency on MembershipProvider
   List<DetailedPayment> _payments = [];
   List<DetailedPayment> _filteredPayments = [];
   bool _isLoading = false;
 
-  PaymentProvider(this._dbHelper) {
+  // Constructor now accepts MembershipProvider
+  PaymentProvider(this._dbHelper, this._membershipProvider) {
     fetchPayments();
   }
 
@@ -70,8 +74,14 @@ class PaymentProvider with ChangeNotifier {
     try {
       await _dbHelper.insertPayment(payment.toJson());
       await fetchPayments(); // Re-fetch to get the detailed view
+
+      // NEW LOGIC: Activate membership if payment is completed
+      if (payment.status == 'Completed') {
+        await _membershipProvider.setMembershipStatus(payment.membershipId, 'Active');
+      }
     } catch (e) {
       print('Error adding payment: $e');
+      rethrow; // Propagate error for UI feedback
     }
   }
 
@@ -79,8 +89,17 @@ class PaymentProvider with ChangeNotifier {
     try {
       await _dbHelper.updatePayment(payment.toJson());
       await fetchPayments(); // Re-fetch to get the detailed view
+
+      // NEW LOGIC: Activate membership if payment is completed, or potentially deactivate if refunded/failed
+      if (payment.status == 'Completed') {
+        await _membershipProvider.setMembershipStatus(payment.membershipId, 'Active');
+      } else if (payment.status == 'Refunded' || payment.status == 'Failed') {
+        // Optionally set to 'Pending' or another inactive status
+        await _membershipProvider.setMembershipStatus(payment.membershipId, 'Pending');
+      }
     } catch (e) {
       print('Error updating payment: $e');
+      rethrow; // Propagate error for UI feedback
     }
   }
 

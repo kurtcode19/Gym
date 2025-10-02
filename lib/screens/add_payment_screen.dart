@@ -1,4 +1,5 @@
-// lib/screens/add_payment_screen.dart
+// lib/screens/add_payment_screen.dart - UPDATED CONTENT
+
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
@@ -39,7 +40,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
         'amount': '0.00',
         'method': 'Cash',
         'payment_date': DateTime.now(),
-        'status': 'Completed',
+        'status': 'Completed', // Default to completed for new payments
       };
     }
 
@@ -124,7 +125,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
                 onPressed: () async {
                   if (_formKey.currentState?.saveAndValidate() ?? false) {
                     final data = _formKey.currentState!.value;
-                    final newPayment = Payment(
+                    final paymentToSave = Payment(
                       paymentId: isEditing ? widget.payment!.paymentId : null,
                       membershipId: data['membership_id'],
                       amount: double.parse(data['amount']),
@@ -133,18 +134,25 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
                       status: data['status'],
                     );
 
-                    if (isEditing) {
-                      await Provider.of<PaymentProvider>(context, listen: false).updatePayment(newPayment);
+                    try {
+                      if (isEditing) {
+                        await Provider.of<PaymentProvider>(context, listen: false).updatePayment(paymentToSave);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Payment updated successfully!')),
+                        );
+                      } else {
+                        await Provider.of<PaymentProvider>(context, listen: false).addPayment(paymentToSave);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Payment added successfully!')),
+                        );
+                      }
+                      Navigator.of(context).pop();
+                    } catch (e) {
+                      // Handle potential errors from payment/membership updates
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Payment updated successfully!')),
-                      );
-                    } else {
-                      await Provider.of<PaymentProvider>(context, listen: false).addPayment(newPayment);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Payment added successfully!')),
+                        SnackBar(content: Text('Error saving payment: $e')),
                       );
                     }
-                    Navigator.of(context).pop();
                   }
                 },
                 style: ElevatedButton.styleFrom(

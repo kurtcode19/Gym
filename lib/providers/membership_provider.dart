@@ -1,4 +1,5 @@
-// lib/providers/membership_provider.dart
+// lib/providers/membership_provider.dart - UPDATED CONTENT
+
 import 'package:flutter/material.dart';
 import 'package:gym/models/membership.dart';
 import 'package:gym/providers/database_helper.dart';
@@ -64,20 +65,37 @@ class MembershipProvider with ChangeNotifier {
   Future<void> addMembership(Membership membership) async {
     try {
       await _dbHelper.insertMembership(membership.toJson());
-      // Re-fetch all to get the detailed view, or reconstruct if performance is an issue
-      await fetchMemberships();
+      await fetchMemberships(); // Re-fetch all to get the detailed view
     } catch (e) {
       print('Error adding membership: $e');
     }
   }
 
+  // Existing update method, now with an added status change parameter
   Future<void> updateMembership(Membership membership) async {
     try {
       await _dbHelper.updateMembership(membership.toJson());
-      // Re-fetch all to get the detailed view, or reconstruct if performance is an issue
-      await fetchMemberships();
+      await fetchMemberships(); // Re-fetch all to get the detailed view
     } catch (e) {
       print('Error updating membership: $e');
+    }
+  }
+
+  // NEW: Method to specifically update the status of a membership
+  Future<void> setMembershipStatus(String membershipId, String newStatus) async {
+    try {
+      final currentMembership = _memberships.firstWhere(
+        (dm) => dm.membership.membershipId == membershipId,
+        orElse: () => throw Exception('Membership not found with ID: $membershipId'),
+      ).membership;
+
+      if (currentMembership.status != newStatus) {
+        final updatedMembership = currentMembership.copyWith(status: newStatus);
+        await _dbHelper.updateMembership(updatedMembership.toJson());
+        await fetchMemberships(); // Refresh list after update
+      }
+    } catch (e) {
+      print('Error setting membership status: $e');
     }
   }
 
