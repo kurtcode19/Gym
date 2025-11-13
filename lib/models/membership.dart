@@ -18,6 +18,24 @@ class Membership {
     required this.status,
   }) : membershipId = membershipId ?? const Uuid().v4();
 
+  // NEW: Check if membership is expired based on end date
+  bool get isExpired {
+    return endDate.isBefore(DateTime.now());
+  }
+
+  // NEW: Get the appropriate status considering expiration
+  String get calculatedStatus {
+    if (status.toLowerCase() == 'cancelled') {
+      return status; // Don't override cancelled status
+    }
+    return isExpired ? 'Expired' : status;
+  }
+
+  // NEW: Create a copy with automatically calculated status
+  Membership withCalculatedStatus() {
+    return copyWith(status: calculatedStatus);
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'membership_id': membershipId,

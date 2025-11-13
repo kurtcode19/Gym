@@ -54,6 +54,10 @@ class MembershipProvider with ChangeNotifier {
     try {
       final membershipMaps = await _dbHelper.getDetailedMemberships();
       _memberships = membershipMaps.map((map) => DetailedMembership.fromMap(map)).toList();
+      
+      // NEW: Check and update expired memberships
+      await _checkAndUpdateExpiredMemberships();
+      
       _filteredMemberships = List.from(_memberships);
     } catch (e) {
       print('Error fetching detailed memberships: $e');
@@ -61,6 +65,68 @@ class MembershipProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
+
+  // NEW: Check all memberships and update expired ones
+  Future<void> _checkAndUpdateExpiredMemberships() async {
+    try {
+      final now = DateTime.now();
+      final membershipsToUpdate = <Membership>[];
+
+      // Find memberships that are expired but not marked as such
+      for (final detailedMembership in _memberships) {
+        final membership = detailedMembership.membership;
+        
+        // Only check active/pending memberships that have expired
+        if ((membership.status.toLowerCase() == 'active' || 
+             membership.status.toLowerCase() == 'pending') &&
+            membership.endDate.isBefore(now)) {
+          
+          membershipsToUpdate.add(membership.copyWith(status: 'Expired'));
+        }
+      }
+
+      // Update all expired memberships in database
+      for (final membership in membershipsToUpdate) {
+        await _dbHelper.updateMembership(membership.toJson());
+      }
+
+      // If we updated any, refresh the local list
+      if (membershipsToUpdate.isNotEmpty) {
+        final updatedMaps = await _dbHelper.getDetailedMemberships();
+        _memberships = updatedMaps.map((map) => DetailedMembership.fromMap(map)).toList();
+      }
+    } catch (e) {
+      print('Error updating expired memberships: $e');
+    }
+  }
+
+  // NEW: Method to manually check and update a single membership's expiration
+  Future<void> checkMembershipExpiration(String membershipId) async {
+    try {
+      final detailedMembership = _memberships.firstWhere(
+        (dm) => dm.membership.membershipId == membershipId,
+      );
+      
+      final membership = detailedMembership.membership;
+      if (membership.isExpired && membership.status.toLowerCase() != 'expired') {
+        await setMembershipStatus(membershipId, 'Expired');
+      }
+    } catch (e) {
+      print('Error checking membership expiration: $e');
+    }
+  }
+
+  // NEW: Method to get memberships that will expire soon (optional feature)
+  List<DetailedMembership> getExpiringMemberships({int daysThreshold = 7}) {
+    final thresholdDate = DateTime.now().add(Duration(days: daysThreshold));
+    return _memberships.where((detailedMembership) {
+      final membership = detailedMembership.membership;
+      return membership.status.toLowerCase() == 'active' &&
+             membership.endDate.isBefore(thresholdDate) &&
+             !membership.isExpired;
+    }).toList();
+  }
+
 
   Future<void> addMembership(Membership membership) async {
     try {
