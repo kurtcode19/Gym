@@ -49,6 +49,7 @@ dependencies:
   fl_chart: ^0.65.0 # For data visualization (e.g., dashboard)
   google_fonts: ^6.1.0 # For custom fonts
   flutter_form_builder: ^9.1.1 # For easier form creation
+  table_calendar: ^3.0.9 # NEW: For the interactive calendar
 
 dev_dependencies:
   flutter_test:
