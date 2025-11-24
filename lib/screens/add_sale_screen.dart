@@ -81,10 +81,10 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     if (existingIndex != -1) {
       SaleItem existingItem = _currentSaleItems[existingIndex];
       if (selectedProduct.stockQuantity < (existingItem.quantity + quantity)) {
-         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Adding ${selectedProduct.productName} would exceed available stock.')),
-         );
-         return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Adding ${selectedProduct.productName} would exceed available stock.')),
+        );
+        return;
       }
       setState(() {
         _currentSaleItems[existingIndex] = existingItem.copyWith(quantity: existingItem.quantity + quantity);
@@ -100,6 +100,103 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
       });
     }
     _calculateTotal();
+  }
+
+  // --- NEW FUNCTION: Show Add Customer Modal ---
+  void _showAddCustomerModal(BuildContext context) {
+    final customerFormKey = GlobalKey<FormBuilderState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Quick Customer'),
+        content: SingleChildScrollView(
+          child: FormBuilder(
+            key: customerFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FormBuilderTextField(
+                  name: 'first_name',
+                  decoration: const InputDecoration(labelText: 'First Name'),
+                  validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 10),
+                FormBuilderTextField(
+                  name: 'last_name',
+                  decoration: const InputDecoration(labelText: 'Last Name'),
+                  validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 10),
+                FormBuilderTextField(
+                  name: 'email',
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'Required';
+                    if (!val.contains('@')) return 'Invalid email';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                FormBuilderTextField(
+                  name: 'phone',
+                  decoration: const InputDecoration(labelText: 'Phone (Optional)'),
+                  keyboardType: TextInputType.phone,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (customerFormKey.currentState?.saveAndValidate() ?? false) {
+                final data = customerFormKey.currentState!.value;
+                final newId = const Uuid().v4();
+                
+                // Create new Customer object
+                // Adjust fields based on your exact Customer model definition
+                final newCustomer = Customer(
+                  customerId: newId,
+                  firstName: data['first_name'],
+                  lastName: data['last_name'],
+                  email: data['email'],
+
+                );
+
+                try {
+                  // Save to provider
+                  await Provider.of<CustomerProvider>(context, listen: false).addCustomer(newCustomer);
+                  
+                  // Update the main form
+                  setState(() {
+                    _selectedCustomerId = newId;
+                  });
+                  
+                  // Update the FormBuilderDropdown value programmatically
+                  _formKey.currentState?.fields['customer_id']?.didChange(newId);
+
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Customer added and selected!'), backgroundColor: Colors.green),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                     SnackBar(content: Text('Error adding customer: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save & Select'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -138,7 +235,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
           enabled: !customerProvider.isLoading && !productProvider.isLoading,
           child: ListView(
             children: [
-              // Customer Selection
+              // Customer Selection Card
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -147,12 +244,28 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Updated Row with Add Customer Button
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text('Customer Information', 
-                              style: Theme.of(context).textTheme.titleMedium),
+                          Row(
+                            children: [
+                              Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text('Customer Information',
+                                  style: Theme.of(context).textTheme.titleMedium),
+                            ],
+                          ),
+                          // NEW ADD BUTTON
+                          TextButton.icon(
+                            onPressed: () => _showAddCustomerModal(context),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Add New'),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -196,7 +309,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                         children: [
                           Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text('Sale Details', 
+                          Text('Sale Details',
                               style: Theme.of(context).textTheme.titleMedium),
                         ],
                       ),
@@ -253,7 +366,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                           children: [
                             Icon(Icons.shopping_cart, color: Theme.of(context).colorScheme.primary),
                             const SizedBox(width: 8),
-                            Text('Sale Items (${_currentSaleItems.length})', 
+                            Text('Sale Items (${_currentSaleItems.length})',
                                 style: Theme.of(context).textTheme.titleMedium),
                           ],
                         ),
@@ -262,16 +375,13 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                           final itemIndex = entry.key;
                           final item = entry.value;
                           final product = productProvider.products.firstWhere(
-                            (p) => p.product.productId == item.productId,
-                            orElse: () => DetailedProduct(
-                              product: Product(
-                                productId: '', 
-                                productName: 'Unknown Product', 
-                                unitPrice: 0, 
-                                stockQuantity: 0
-                              )
-                            )
-                          );
+                              (p) => p.product.productId == item.productId,
+                              orElse: () => DetailedProduct(
+                                  product: Product(
+                                      productId: '',
+                                      productName: 'Unknown Product',
+                                      unitPrice: 0,
+                                      stockQuantity: 0)));
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
@@ -489,7 +599,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
                       if (int.tryParse(value) == null && value.isNotEmpty) {
-                         _quantityController.text = '1';
+                        _quantityController.text = '1';
                       }
                     },
                   ),
