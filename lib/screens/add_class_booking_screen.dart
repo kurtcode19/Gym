@@ -10,6 +10,7 @@ import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/class_provider.dart';
 import 'package:gym/providers/trainer_provider.dart';
 import 'package:gym/providers/membership_provider.dart';
+import 'package:gym/providers/trainer_package_provider.dart'; // NEW IMPORT
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -42,6 +43,8 @@ class _AddClassBookingScreenState extends State<AddClassBookingScreen> {
     if (mounted) {
       final classProvider = Provider.of<ClassProvider>(context, listen: false);
       Provider.of<MembershipProvider>(context, listen: false).fetchMemberships(); 
+      // Also fetch packages to ensure up-to-date status
+      Provider.of<TrainerPackageProvider>(context, listen: false).fetchPackages();
 
       if (widget.booking != null) {
         GymClass? currentClass;
@@ -156,6 +159,7 @@ class _AddClassBookingScreenState extends State<AddClassBookingScreen> {
           enabled: !customerProvider.isLoading && !classProvider.isLoading && !membershipProvider.isLoading,
           child: ListView(
             children: [
+              // Customer Selection
               FormBuilderDropdown<String>(
                 name: 'customer_id',
                 decoration: InputDecoration(
@@ -176,13 +180,11 @@ class _AddClassBookingScreenState extends State<AddClassBookingScreen> {
               ),
               const SizedBox(height: 24),
 
-              // --- UPDATED CALENDAR ---
+              // Calendar Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("Select Date", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-                  
-                  // Legend for the dots
                   Row(
                     children: [
                       Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle)),
@@ -205,30 +207,19 @@ class _AddClassBookingScreenState extends State<AddClassBookingScreen> {
                   selectedDayPredicate: (day) => isSameDay(_selectedClassDate, day),
                   onDaySelected: _onDaySelected,
                   onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-                  
-                  // --- EVENT LOADER ---
-                  // This function checks if a specific day has classes
                   eventLoader: (day) {
                     final normalizedDay = DateTime.utc(day.year, day.month, day.day);
-                    // Check if the 'classDates' set in provider contains this day
                     return classProvider.classDates.contains(normalizedDay) ? [true] : [];
                   },
-                  
                   calendarStyle: CalendarStyle(
                     selectedDecoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
                     todayDecoration: BoxDecoration(color: Colors.blue.withOpacity(0.3), shape: BoxShape.circle),
-                    
-                    // Style the indicator dot
-                    markerDecoration: const BoxDecoration(
-                      color: Colors.orange, 
-                      shape: BoxShape.circle,
-                    ),
-                    markersMaxCount: 1, // Just one dot per day is enough
+                    markerDecoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                    markersMaxCount: 1,
                   ),
                   headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
                 ),
               ),
-              // -----------------------
               
               const SizedBox(height: 16),
 
@@ -365,13 +356,19 @@ class _AddClassBookingScreenState extends State<AddClassBookingScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () async {
+                    // 1. Trigger validation for hidden field
                     _formKey.currentState?.fields['class_id']?.validate();
+                    
                     if (_formKey.currentState?.saveAndValidate() ?? false) {
                       final data = _formKey.currentState!.value;
                       
+                      // 2. Get Providers
                       final bookingProvider = Provider.of<ClassBookingProvider>(context, listen: false);
                       final classProvider = Provider.of<ClassProvider>(context, listen: false);
+                      // NEW: Get Package Provider
+                      final packageProvider = Provider.of<TrainerPackageProvider>(context, listen: false);
                       
+                      // 3. Validate Double Booking
                       final targetClass = classProvider.classes.firstWhere((c) => c.gymClass.classId == data['class_id']).gymClass;
                       final error = bookingProvider.validateBooking(
                         data['customer_id'], 
@@ -393,17 +390,21 @@ class _AddClassBookingScreenState extends State<AddClassBookingScreen> {
                       );
 
                       try {
+                        // 4. Execute Add/Update with Package Logic
                         if (widget.booking != null) {
                           await bookingProvider.updateClassBooking(newBooking);
                         } else {
-                          await bookingProvider.addClassBooking(newBooking);
+                          // PASS packageProvider to handle deduction logic
+                          await bookingProvider.addClassBooking(newBooking, packageProvider);
                         }
+                        
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking saved!')));
                           Navigator.pop(context);
                         }
                       } catch (e) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        // This catches "User has no sessions left" errors
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
                       }
                     }
                   },

@@ -8,6 +8,9 @@ class Membership {
   final DateTime startDate;
   final DateTime endDate;
   final String status; // e.g., 'Active', 'Pending', 'Expired', 'Cancelled'
+  // NEW FIELDS FOR TRAINER
+  final String? trainerId;
+  final double trainerFee;
 
   Membership({
     String? membershipId,
@@ -16,14 +19,16 @@ class Membership {
     required this.startDate,
     required this.endDate,
     required this.status,
+    this.trainerId,
+    this.trainerFee = 0.0, // Default 0 if no trainer
   }) : membershipId = membershipId ?? const Uuid().v4();
 
-  // NEW: Check if membership is expired based on end date
+  // Check if membership is expired based on end date
   bool get isExpired {
     return endDate.isBefore(DateTime.now());
   }
 
-  // NEW: Get the appropriate status considering expiration
+  // Get the appropriate status considering expiration
   String get calculatedStatus {
     if (status.toLowerCase() == 'cancelled') {
       return status; // Don't override cancelled status
@@ -31,7 +36,7 @@ class Membership {
     return isExpired ? 'Expired' : status;
   }
 
-  // NEW: Create a copy with automatically calculated status
+  // Create a copy with automatically calculated status
   Membership withCalculatedStatus() {
     return copyWith(status: calculatedStatus);
   }
@@ -44,6 +49,8 @@ class Membership {
       'start_date': startDate.millisecondsSinceEpoch ~/ 1000,
       'end_date': endDate.millisecondsSinceEpoch ~/ 1000,
       'status': status,
+      'trainer_id': trainerId, // NEW
+      'trainer_fee': trainerFee, // NEW
     };
   }
 
@@ -55,6 +62,8 @@ class Membership {
       startDate: DateTime.fromMillisecondsSinceEpoch(json['start_date'] * 1000),
       endDate: DateTime.fromMillisecondsSinceEpoch(json['end_date'] * 1000),
       status: json['status'],
+      trainerId: json['trainer_id'], // NEW
+      trainerFee: (json['trainer_fee'] as num?)?.toDouble() ?? 0.0, // NEW
     );
   }
 
@@ -65,6 +74,8 @@ class Membership {
     DateTime? startDate,
     DateTime? endDate,
     String? status,
+    String? trainerId, // NEW
+    double? trainerFee, // NEW
   }) {
     return Membership(
       membershipId: membershipId ?? this.membershipId,
@@ -73,6 +84,8 @@ class Membership {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       status: status ?? this.status,
+      trainerId: trainerId ?? this.trainerId,
+      trainerFee: trainerFee ?? this.trainerFee,
     );
   }
 }

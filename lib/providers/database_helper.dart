@@ -24,7 +24,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'gym.db');
     return await openDatabase(
       path,
-      version: 4, // BUMP VERSION TO 4
+      version: 6, // BUMP TO 6
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -62,15 +62,22 @@ class DatabaseHelper {
 
     // MEMBERSHIP_PLAN Table
 // MEMBERSHIP_PLAN Table - UPDATED SCHEMA
-await db.execute('''
-  CREATE TABLE MEMBERSHIP_PLAN (
-    plan_id TEXT PRIMARY KEY,
-    plan_name TEXT NOT NULL,
-    monthly_fee REAL NOT NULL,
-    duration_value INTEGER NOT NULL,
-    duration_unit TEXT NOT NULL
-  )
-''');
+ // Update MEMBERSHIP Table
+    await db.execute('''
+      CREATE TABLE MEMBERSHIP (
+        membership_id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL,
+        plan_id TEXT NOT NULL,
+        start_date INTEGER NOT NULL,
+        end_date INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        trainer_id TEXT, -- NEW
+        trainer_fee REAL DEFAULT 0.0, -- NEW
+        FOREIGN KEY (customer_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE,
+        FOREIGN KEY (plan_id) REFERENCES MEMBERSHIP_PLAN(plan_id) ON DELETE CASCADE,
+        FOREIGN KEY (trainer_id) REFERENCES TRAINER(trainer_id) ON DELETE SET NULL
+      )
+    ''');
 
     // MEMBERSHIP Table
     await db.execute('''
@@ -100,7 +107,23 @@ await db.execute('''
         rate_per_session REAL DEFAULT 0.0 -- NEW COLUMN
       )
     ''');
-
+        // NEW TABLE: TRAINER_PACKAGE
+    await db.execute('''
+      CREATE TABLE TRAINER_PACKAGE (
+        package_id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL,
+        trainer_id TEXT NOT NULL,
+        package_name TEXT,
+        price REAL,
+        total_sessions INTEGER,
+        sessions_used INTEGER,
+        start_date INTEGER,
+        end_date INTEGER,
+        status TEXT,
+        FOREIGN KEY (customer_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE,
+        FOREIGN KEY (trainer_id) REFERENCES TRAINER(trainer_id) ON DELETE CASCADE
+      )
+    ''');
     // CLASS Table
     await db.execute('''
       CREATE TABLE CLASS (
@@ -267,6 +290,25 @@ await db.execute('''
       print('Upgrading TRAINER table');
       await db.execute("ALTER TABLE TRAINER ADD COLUMN rate_per_session REAL DEFAULT 0.0");
     }
+        if (oldVersion < 6) {
+      print('Creating TRAINER_PACKAGE table');
+      await db.execute('''
+        CREATE TABLE TRAINER_PACKAGE (
+          package_id TEXT PRIMARY KEY,
+          customer_id TEXT NOT NULL,
+          trainer_id TEXT NOT NULL,
+          package_name TEXT,
+          price REAL,
+          total_sessions INTEGER,
+          sessions_used INTEGER,
+          start_date INTEGER,
+          end_date INTEGER,
+          status TEXT,
+          FOREIGN KEY (customer_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE,
+          FOREIGN KEY (trainer_id) REFERENCES TRAINER(trainer_id) ON DELETE CASCADE
+        )
+      ''');
+    }
   }
 
   // --- CRUD Methods for CUSTOMER Table ---
@@ -274,7 +316,25 @@ await db.execute('''
     final db = await database;
     return await db.insert('CUSTOMER', customer, conflictAlgorithm: ConflictAlgorithm.replace);
   }
-
+  Future<int> insertTrainerPackage(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('TRAINER_PACKAGE', data);
+  }
+    Future<List<Map<String, dynamic>>> getTrainerPackages() async {
+    final db = await database;
+    // Join with Customer and Trainer names for display
+    return await db.rawQuery('''
+      SELECT 
+        TP.*,
+        C.first_name as c_first, C.last_name as c_last,
+        T.first_name as t_first, T.last_name as t_last
+      FROM TRAINER_PACKAGE TP
+      JOIN CUSTOMER C ON TP.customer_id = C.customer_id
+      JOIN TRAINER T ON TP.trainer_id = T.trainer_id
+      ORDER BY TP.end_date DESC
+    ''');
+  }
+  
   Future<List<Map<String, dynamic>>> getCustomers() async {
     final db = await database;
     return await db.query('CUSTOMER', orderBy: 'last_name, first_name');

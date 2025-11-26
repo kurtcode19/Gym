@@ -1,5 +1,6 @@
 // lib/screens/class_bookings_screen.dart
 import 'package:flutter/material.dart';
+import 'package:gym/utils/app_refresher.dart';
 import 'package:provider/provider.dart';
 import 'package:gym/providers/class_booking_provider.dart';
 import 'package:gym/screens/add_class_booking_screen.dart';
@@ -366,12 +367,15 @@ class _ClassBookingsScreenState extends State<ClassBookingsScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('Yes, Delete', style: TextStyle(color: Colors.white)),
-              onPressed: () {
+              onPressed: () async {
                 bookingProvider.deleteClassBooking(booking.bookingId);
                 Navigator.of(context).pop();
+                  if (context.mounted) {
+    await AppRefresher.refreshAll(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Booking deleted.')),
                 );
+                  }
               },
             ),
           ],

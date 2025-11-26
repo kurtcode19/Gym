@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:gym/providers/database_helper.dart';
 import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/membership_plan_provider.dart';
-import 'package:gym/providers/membership_provider.dart'; // IMPORTANT: This needs to be created first
+import 'package:gym/providers/membership_provider.dart';
 import 'package:gym/providers/attendance_provider.dart';
 import 'package:gym/providers/trainer_provider.dart';
 import 'package:gym/providers/class_provider.dart';
@@ -16,9 +16,10 @@ import 'package:gym/providers/class_booking_provider.dart';
 import 'package:gym/providers/product_category_provider.dart';
 import 'package:gym/providers/product_provider.dart';
 import 'package:gym/providers/sale_provider.dart';
-import 'package:gym/providers/payment_provider.dart'; // This now depends on MembershipProvider
+import 'package:gym/providers/payment_provider.dart';
 import 'package:gym/providers/expense_provider.dart';
 import 'package:gym/providers/equipment_provider.dart';
+import 'package:gym/providers/trainer_package_provider.dart'; // 1. NEW IMPORT
 
 // Auth system
 import 'package:gym/auth/auth_service.dart';
@@ -54,6 +55,7 @@ import 'package:gym/screens/finance_report_screen.dart';
 import 'package:gym/screens/equipment_screen.dart';
 import 'package:gym/screens/add_equipment_screen.dart';
 import 'package:gym/screens/dashboard_screen.dart';
+import 'package:gym/screens/trainer_packages_screen.dart'; 
 
 // Auth Screens
 import 'package:gym/screens/auth/onboarding_screen.dart';
@@ -69,29 +71,28 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final databaseHelper = DatabaseHelper(); // Create once here
+    final databaseHelper = DatabaseHelper(); 
 
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CustomerProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => MembershipPlanProvider(databaseHelper)),
-        // Create MembershipProvider BEFORE PaymentProvider
         ChangeNotifierProvider(create: (_) => MembershipProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => AttendanceProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => TrainerProvider(databaseHelper)),
+        
+        // 2. REGISTER NEW PROVIDER
+        ChangeNotifierProvider(create: (_) => TrainerPackageProvider(databaseHelper)), 
+        
         ChangeNotifierProvider(create: (_) => ClassProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => ClassBookingProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => ProductCategoryProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => ProductProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => SaleProvider(databaseHelper)),
-        // Pass MembershipProvider to PaymentProvider
+        
         ChangeNotifierProxyProvider<MembershipProvider, PaymentProvider>(
           create: (context) => PaymentProvider(databaseHelper, Provider.of<MembershipProvider>(context, listen: false)),
           update: (context, membershipProvider, paymentProvider) {
-            // This is called when MembershipProvider changes.
-            // If PaymentProvider doesn't need to react to changes *in* MembershipProvider,
-            // but just needs its initial instance, this update logic can be simpler.
-            // For now, we'll assume it just needs the instance.
             return paymentProvider ?? PaymentProvider(databaseHelper, membershipProvider);
           },
         ),
@@ -116,7 +117,7 @@ class MyApp extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          floatingActionButtonTheme: FloatingActionButtonThemeData(
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
             backgroundColor: Colors.deepOrange,
             foregroundColor: Colors.white,
           ),
@@ -183,7 +184,7 @@ class MyApp extends StatelessWidget {
           '/add_class': (context) => const AddClassScreen(),
           '/class_bookings': (context) => const ClassBookingsScreen(),
           '/add_class_booking': (context) => const AddClassBookingScreen(),
-          '/product_categories': (context) => const AddProductCategoryScreen(), // Fix: Should be screen, not provider
+          '/product_categories': (context) => const ProductCategoriesScreen(), // Fixed type
           '/add_product_category': (context) => const AddProductCategoryScreen(),
           '/products': (context) => const ProductsScreen(),
           '/add_product': (context) => const AddProductScreen(),
@@ -198,8 +199,10 @@ class MyApp extends StatelessWidget {
           '/finance_report': (context) => const FinanceReportScreen(),
           '/equipment': (context) => const EquipmentScreen(),
           '/add_equipment': (context) => const AddEquipmentScreen(),
-          // In routes:
+          
+          // 3. ENSURE ROUTES ARE REGISTERED
           '/trainer_payout': (context) => const TrainerPayoutScreen(),  
+          '/trainer_packages': (context) => const TrainerPackagesScreen(),
         },
       ),
     );

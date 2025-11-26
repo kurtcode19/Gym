@@ -1,5 +1,6 @@
 // lib/providers/class_booking_provider.dart - UPDATED CONTENT
-
+// Add this import
+import 'package:gym/providers/trainer_package_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:gym/models/class_booking.dart';
 import 'package:gym/providers/database_helper.dart';
@@ -148,14 +149,62 @@ class ClassBookingProvider with ChangeNotifier {
     return null; // No conflict
   }
 
-  Future<void> addClassBooking(ClassBooking booking) async {
-    try {
-      await _dbHelper.insertClassBooking(booking.toJson());
-      await fetchClassBookings(); 
-    } catch (e) {
-      print('Error adding class booking: $e');
-      rethrow;
-    }
+  // UPDATE: Modify addClassBooking to accept the TrainerPackageProvider context
+  Future<void> addClassBooking(ClassBooking booking, TrainerPackageProvider packageProvider) async {
+    final db = await _dbHelper.database;
+    
+    await db.transaction((txn) async {
+      // 1. Insert Booking
+      await txn.insert('CLASS_BOOKING', booking.toJson());
+
+      // 2. CHECK FOR TRAINER PACKAGE
+      // Find active package for this customer & class's trainer
+      // (You need to fetch the class details to know the trainer ID)
+      final classRow = await txn.query('CLASS', where: 'class_id = ?', whereArgs: [booking.classId]);
+      if (classRow.isNotEmpty) {
+        final trainerId = classRow.first['trainer_id'] as String?;
+        
+        if (trainerId != null) {
+          // Find active package
+          final packages = await txn.rawQuery('''
+            SELECT * FROM TRAINER_PACKAGE 
+            WHERE customer_id = ? AND trainer_id = ? AND status = 'Active'
+            AND end_date > ?
+          ''', [booking.customerId, trainerId, DateTime.now().millisecondsSinceEpoch ~/ 1000]);
+
+          if (packages.isNotEmpty) {
+            final pkg = packages.first;
+            int totalSessions = pkg['total_sessions'] as int;
+            int sessionsUsed = pkg['sessions_used'] as int;
+            String pkgId = pkg['package_id'] as String;
+
+            // If it's not unlimited (-1), increment used count
+            if (totalSessions != -1) {
+              if (sessionsUsed < totalSessions) {
+                await txn.rawUpdate(
+                  'UPDATE TRAINER_PACKAGE SET sessions_used = sessions_used + 1 WHERE package_id = ?',
+                  [pkgId]
+                );
+                // If used up, mark completed
+                if (sessionsUsed + 1 >= totalSessions) {
+                   await txn.rawUpdate(
+                    "UPDATE TRAINER_PACKAGE SET status = 'Completed' WHERE package_id = ?",
+                    [pkgId]
+                  );
+                }
+              } else {
+                throw Exception("User has no sessions left in their package!");
+              }
+            }
+            // If unlimited, we just let them book (do nothing), as long as date is valid
+          }
+        }
+      }
+    });
+
+    await fetchClassBookings();
+    // Also refresh packages UI
+    packageProvider.fetchPackages(); 
   }
 
   Future<void> updateClassBooking(ClassBooking booking) async {

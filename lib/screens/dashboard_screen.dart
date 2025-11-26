@@ -1,4 +1,4 @@
-// lib/screens/dashboard_screen.dart - Modern UI/UX Enhanced
+// lib/screens/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -454,19 +454,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       {"title": "Bookings", "icon": Icons.event_available, "route": "/class_bookings", "color": Colors.orange},
       {"title": "Trainers", "icon": Icons.sports, "route": "/trainers", "color": Colors.orange},
 
+      // NEW ITEMS FOR TRAINERS
+      {"title": "PT Packages", "icon": Icons.confirmation_number, "route": "/trainer_packages", "color": Colors.teal},
+      {"title": "Trainer Pay", "icon": Icons.payments, "route": "/trainer_payout", "color": Colors.teal},
+
       {"title": "Products", "icon": Icons.inventory_2, "route": "/products", "color": Colors.green},
       {"title": "Sales", "icon": Icons.point_of_sale, "route": "/sales", "color": Colors.green},
       {"title": "Payments", "icon": Icons.attach_money, "route": "/payments", "color": Colors.green},
       
       {"title": "Expenses", "icon": Icons.money_off, "route": "/expenses", "color": Colors.red},
       {"title": "Equipment", "icon": Icons.fitness_center, "route": "/equipment", "color": Colors.grey},
-      // In _buildManagementGrid items list:
-{
-  "title": "Trainer Pay", 
-  "icon": Icons.payments_rounded, 
-  "route": "/trainer_payout", // Register this route in main.dart
-  "color": Colors.teal
-},
     ];
 
     return GridView.builder(
