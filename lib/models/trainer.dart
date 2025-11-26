@@ -8,6 +8,7 @@ class Trainer {
   final String? email;
   final String? phoneNumber;
   final DateTime hireDate;
+  final double ratePerSession; // NEW: Fee per class
 
   Trainer({
     String? trainerId,
@@ -16,6 +17,7 @@ class Trainer {
     this.email,
     this.phoneNumber,
     DateTime? hireDate,
+    this.ratePerSession = 0.0, // Default value
   })  : trainerId = trainerId ?? const Uuid().v4(),
         hireDate = hireDate ?? DateTime.now();
 
@@ -27,6 +29,7 @@ class Trainer {
       'email': email,
       'phone_number': phoneNumber,
       'hire_date': hireDate.millisecondsSinceEpoch ~/ 1000,
+      'rate_per_session': ratePerSession, // NEW
     };
   }
 
@@ -38,6 +41,7 @@ class Trainer {
       email: json['email'],
       phoneNumber: json['phone_number'],
       hireDate: DateTime.fromMillisecondsSinceEpoch(json['hire_date'] * 1000),
+      ratePerSession: (json['rate_per_session'] as num?)?.toDouble() ?? 0.0, // NEW
     );
   }
 
@@ -48,6 +52,7 @@ class Trainer {
     String? email,
     String? phoneNumber,
     DateTime? hireDate,
+    double? ratePerSession, // NEW
   }) {
     return Trainer(
       trainerId: trainerId ?? this.trainerId,
@@ -56,6 +61,7 @@ class Trainer {
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       hireDate: hireDate ?? this.hireDate,
+      ratePerSession: ratePerSession ?? this.ratePerSession, // NEW
     );
   }
 }

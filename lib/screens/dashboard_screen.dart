@@ -460,6 +460,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       {"title": "Expenses", "icon": Icons.money_off, "route": "/expenses", "color": Colors.red},
       {"title": "Equipment", "icon": Icons.fitness_center, "route": "/equipment", "color": Colors.grey},
+      // In _buildManagementGrid items list:
+{
+  "title": "Trainer Pay", 
+  "icon": Icons.payments_rounded, 
+  "route": "/trainer_payout", // Register this route in main.dart
+  "color": Colors.teal
+},
     ];
 
     return GridView.builder(

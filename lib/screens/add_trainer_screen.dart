@@ -96,6 +96,18 @@ class _AddTrainerScreenState extends State<AddTrainerScreen> {
                           format: DateFormat('yyyy-MM-dd'),
                           validator: (value) => value == null ? 'Required' : null,
                         ),
+                        const SizedBox(height: 16),
+                        FormBuilderTextField(
+                          name: 'rate_per_session',
+                          decoration: _fieldDecoration('Rate Per Class (₱)', Icons.monetization_on),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          initialValue: isEditing ? widget.trainer!.ratePerSession.toStringAsFixed(2) : '0.00',
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return 'Required';
+                            if (double.tryParse(value) == null) return 'Invalid number';
+                            return null;
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -151,6 +163,7 @@ class _AddTrainerScreenState extends State<AddTrainerScreen> {
                           email: data['email'],
                           phoneNumber: data['phone_number'],
                           hireDate: data['hire_date'],
+                          ratePerSession: double.parse(data['rate_per_session']),
                         );
 
                         try {

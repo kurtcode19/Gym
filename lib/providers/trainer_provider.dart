@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:gym/models/trainer.dart';
 import 'package:gym/providers/database_helper.dart';
+import 'package:gym/providers/class_provider.dart'; // Import for DetailedGymClass
 
 class TrainerProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
@@ -33,6 +34,37 @@ class TrainerProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
+
+  // --- PAYOUT CALCULATION LOGIC ---
+
+  // Helper to count sessions in a date range
+  int getSessionCount(String trainerId, List<DetailedGymClass> allClasses, DateTime start, DateTime end) {
+    // Normalize dates to ensure inclusive comparison (start of day to end of day)
+    final startDate = DateTime(start.year, start.month, start.day);
+    final endDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
+
+    return allClasses.where((c) {
+      // Check if class belongs to this trainer
+      if (c.gymClass.trainerId != trainerId) return false;
+      
+      // Check date range
+      final classTime = c.gymClass.scheduleTime;
+      return classTime.isAfter(startDate) && classTime.isBefore(endDate);
+    }).length;
+  }
+
+  // Helper to calculate total pay
+  double calculateTotalPay(String trainerId, List<DetailedGymClass> allClasses, DateTime start, DateTime end) {
+    final trainer = _trainers.firstWhere(
+      (t) => t.trainerId == trainerId,
+      orElse: () => Trainer(trainerId: '', firstName: '', lastName: '', hireDate: DateTime.now()), // Fallback
+    );
+    
+    final count = getSessionCount(trainerId, allClasses, start, end);
+    return count * trainer.ratePerSession;
+  }
+
+  // --------------------------------
 
   Future<void> addTrainer(Trainer trainer) async {
     try {

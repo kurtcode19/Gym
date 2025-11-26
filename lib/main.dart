@@ -32,6 +32,7 @@ import 'package:gym/screens/add_membership_plan_screen.dart';
 import 'package:gym/screens/memberships_screen.dart';
 import 'package:gym/screens/add_membership_screen.dart';
 import 'package:gym/screens/trainers_screen.dart';
+import 'package:gym/screens/trainer_payout_screen.dart';
 import 'package:gym/screens/add_trainer_screen.dart';
 import 'package:gym/screens/classes_screen.dart';
 import 'package:gym/screens/add_class_screen.dart';
@@ -197,6 +198,8 @@ class MyApp extends StatelessWidget {
           '/finance_report': (context) => const FinanceReportScreen(),
           '/equipment': (context) => const EquipmentScreen(),
           '/add_equipment': (context) => const AddEquipmentScreen(),
+          // In routes:
+          '/trainer_payout': (context) => const TrainerPayoutScreen(),  
         },
       ),
     );

@@ -24,7 +24,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'gym.db');
     return await openDatabase(
       path,
-      version: 3, // CHANGED FROM 2 TO 3
+      version: 4, // BUMP VERSION TO 4
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -88,7 +88,7 @@ await db.execute('''
 
 
 
-    // TRAINER Table
+    // Update TRAINER table definition for new installs
     await db.execute('''
       CREATE TABLE TRAINER (
         trainer_id TEXT PRIMARY KEY,
@@ -96,7 +96,8 @@ await db.execute('''
         last_name TEXT NOT NULL,
         email TEXT,
         phone_number TEXT,
-        hire_date INTEGER NOT NULL
+        hire_date INTEGER NOT NULL,
+        rate_per_session REAL DEFAULT 0.0 -- NEW COLUMN
       )
     ''');
 
@@ -260,6 +261,11 @@ await db.execute('''
       // SQLite requires separate statements for adding columns
       await db.execute("ALTER TABLE ATTENDANCE ADD COLUMN type TEXT DEFAULT 'Member'");
       await db.execute("ALTER TABLE ATTENDANCE ADD COLUMN amount_paid REAL DEFAULT 0.0");
+    }
+        // NEW UPGRADE FOR v4
+    if (oldVersion < 4) {
+      print('Upgrading TRAINER table');
+      await db.execute("ALTER TABLE TRAINER ADD COLUMN rate_per_session REAL DEFAULT 0.0");
     }
   }
 
