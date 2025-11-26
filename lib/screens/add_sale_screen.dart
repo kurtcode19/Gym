@@ -1,3 +1,4 @@
+// lib/screens/add_sale_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +29,23 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   String? _selectedCustomerId;
   String? _selectedProductId;
   final TextEditingController _quantityController = TextEditingController(text: '1');
+
+  // --- UI Helpers ---
+  InputDecoration _fieldDecoration(String label, IconData icon, {String? hintText}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      prefixIcon: Icon(icon, color: Colors.blueGrey),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+    );
+  }
 
   @override
   void initState() {
@@ -65,15 +83,11 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
 
   void _addSaleItem(Product selectedProduct, int quantity) {
     if (quantity <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Quantity must be positive.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quantity must be positive.')));
       return;
     }
     if (selectedProduct.stockQuantity < quantity) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Not enough stock for ${selectedProduct.productName}. Available: ${selectedProduct.stockQuantity}')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Not enough stock. Available: ${selectedProduct.stockQuantity}')));
       return;
     }
 
@@ -81,9 +95,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     if (existingIndex != -1) {
       SaleItem existingItem = _currentSaleItems[existingIndex];
       if (selectedProduct.stockQuantity < (existingItem.quantity + quantity)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Adding ${selectedProduct.productName} would exceed available stock.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exceeds available stock.')));
         return;
       }
       setState(() {
@@ -102,64 +114,45 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     _calculateTotal();
   }
 
-  // --- NEW FUNCTION: Show Add Customer Modal ---
   void _showAddCustomerModal(BuildContext context) {
     final customerFormKey = GlobalKey<FormBuilderState>();
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add Quick Customer'),
+        title: const Text('New Customer'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: SingleChildScrollView(
           child: FormBuilder(
             key: customerFormKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                FormBuilderTextField(name: 'first_name', decoration: _fieldDecoration('First Name', Icons.person), validator: (val) => val == null || val.isEmpty ? 'Required' : null),
+                const SizedBox(height: 12),
+                FormBuilderTextField(name: 'last_name', decoration: _fieldDecoration('Last Name', Icons.person_outline), validator: (val) => val == null || val.isEmpty ? 'Required' : null),
+                const SizedBox(height: 12),
                 FormBuilderTextField(
-                  name: 'first_name',
-                  decoration: const InputDecoration(labelText: 'First Name'),
-                  validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 10),
-                FormBuilderTextField(
-                  name: 'last_name',
-                  decoration: const InputDecoration(labelText: 'Last Name'),
-                  validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 10),
-                FormBuilderTextField(
-                  name: 'email',
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  name: 'email', 
+                  decoration: _fieldDecoration('Email', Icons.email), 
                   validator: (val) {
                     if (val == null || val.isEmpty) return 'Required';
                     if (!val.contains('@')) return 'Invalid email';
                     return null;
-                  },
+                  }
                 ),
-                const SizedBox(height: 10),
-                FormBuilderTextField(
-                  name: 'phone',
-                  decoration: const InputDecoration(labelText: 'Phone (Optional)'),
-                  keyboardType: TextInputType.phone,
-                ),
+                const SizedBox(height: 12),
+                FormBuilderTextField(name: 'phone', decoration: _fieldDecoration('Phone', Icons.phone), keyboardType: TextInputType.phone),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               if (customerFormKey.currentState?.saveAndValidate() ?? false) {
                 final data = customerFormKey.currentState!.value;
                 final newId = const Uuid().v4();
-                
-                // Create new Customer object
-                // Adjust fields based on your exact Customer model definition
                 final newCustomer = Customer(
                   customerId: newId,
                   firstName: data['first_name'],
@@ -169,26 +162,12 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                 );
 
                 try {
-                  // Save to provider
                   await Provider.of<CustomerProvider>(context, listen: false).addCustomer(newCustomer);
-                  
-                  // Update the main form
-                  setState(() {
-                    _selectedCustomerId = newId;
-                  });
-                  
-                  // Update the FormBuilderDropdown value programmatically
+                  setState(() => _selectedCustomerId = newId);
                   _formKey.currentState?.fields['customer_id']?.didChange(newId);
-
                   if (ctx.mounted) Navigator.pop(ctx);
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Customer added and selected!'), backgroundColor: Colors.green),
-                  );
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                     SnackBar(content: Text('Error adding customer: $e')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
@@ -222,308 +201,208 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Sale' : 'Create New Sale'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        title: Text(isEditing ? 'Edit Sale' : 'New Sale'),
+        centerTitle: true,
         elevation: 0,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: FormBuilder(
           key: _formKey,
           initialValue: initialValues,
           enabled: !customerProvider.isLoading && !productProvider.isLoading,
-          child: ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Customer Selection Card
+              // 1. Transaction Details
+              _buildSectionHeader('Transaction Details'),
               Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Updated Row with Add Customer Button
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
-                              const SizedBox(width: 8),
-                              Text('Customer Information',
-                                  style: Theme.of(context).textTheme.titleMedium),
-                            ],
-                          ),
-                          // NEW ADD BUTTON
-                          TextButton.icon(
-                            onPressed: () => _showAddCustomerModal(context),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Add New'),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              visualDensity: VisualDensity.compact,
+                          Expanded(
+                            child: FormBuilderDropdown<String>(
+                              name: 'customer_id',
+                              decoration: _fieldDecoration('Customer', Icons.person),
+                              validator: (value) => value == null ? 'Required' : null,
+                              onChanged: (val) => setState(() => _selectedCustomerId = val),
+                              items: customerProvider.customers
+                                  .map((c) => DropdownMenuItem(value: c.customerId, child: Text('${c.firstName} ${c.lastName}')))
+                                  .toList(),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      FormBuilderDropdown<String>(
-                        name: 'customer_id',
-                        decoration: InputDecoration(
-                          labelText: 'Select Customer',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        validator: (value) => value == null ? 'Please select a customer' : null,
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedCustomerId = val;
-                          });
-                        },
-                        items: customerProvider.customers
-                            .map((customer) => DropdownMenuItem<String>(
-                                  value: customer.customerId,
-                                  child: Text('${customer.firstName} ${customer.lastName} (${customer.email})'),
-                                ))
-                            .toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Sale Details
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text('Sale Details',
-                              style: Theme.of(context).textTheme.titleMedium),
+                          Container(
+                            decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)),
+                            child: IconButton(
+                              icon: const Icon(Icons.person_add, color: Colors.blue),
+                              tooltip: 'New Customer',
+                              onPressed: () => _showAddCustomerModal(context),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      FormBuilderDateTimePicker(
-                        name: 'sale_date',
-                        decoration: InputDecoration(
-                          labelText: 'Sale Date',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        inputType: InputType.date,
-                        format: DateFormat('yyyy-MM-dd'),
-                        validator: (value) => value == null ? 'Sale date cannot be empty' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      FormBuilderDropdown<String>(
-                        name: 'payment_method',
-                        decoration: InputDecoration(
-                          labelText: 'Payment Method',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        items: ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Other']
-                            .map((method) => DropdownMenuItem(
-                                  value: method,
-                                  child: Text(method),
-                                ))
-                            .toList(),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FormBuilderDateTimePicker(
+                              name: 'sale_date',
+                              decoration: _fieldDecoration('Date', Icons.calendar_today),
+                              inputType: InputType.date,
+                              format: DateFormat('yyyy-MM-dd'),
+                              validator: (value) => value == null ? 'Required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FormBuilderDropdown<String>(
+                              name: 'payment_method',
+                              decoration: _fieldDecoration('Method', Icons.payment),
+                              items: ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Other']
+                                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                                  .toList(),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
 
-              // Add Products Section
+              const SizedBox(height: 24),
+
+              // 2. Add Products
+              _buildSectionHeader('Add Items'),
               _buildAddProductSection(context, productProvider),
-              const SizedBox(height: 16),
 
-              // Sale Items List
-              if (_currentSaleItems.isNotEmpty)
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.shopping_cart, color: Theme.of(context).colorScheme.primary),
-                            const SizedBox(width: 8),
-                            Text('Sale Items (${_currentSaleItems.length})',
-                                style: Theme.of(context).textTheme.titleMedium),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ..._currentSaleItems.asMap().entries.map((entry) {
-                          final itemIndex = entry.key;
-                          final item = entry.value;
+              const SizedBox(height: 24),
+
+              // 3. Shopping Cart List
+              _buildSectionHeader('Order Summary'),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
+                child: Column(
+                  children: [
+                    if (_currentSaleItems.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(30.0),
+                        child: Center(child: Text("Cart is empty", style: TextStyle(color: Colors.grey))),
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _currentSaleItems.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final item = _currentSaleItems[index];
                           final product = productProvider.products.firstWhere(
-                              (p) => p.product.productId == item.productId,
-                              orElse: () => DetailedProduct(
-                                  product: Product(
-                                      productId: '',
-                                      productName: 'Unknown Product',
-                                      unitPrice: 0,
-                                      stockQuantity: 0)));
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
+                            (p) => p.product.productId == item.productId,
+                            orElse: () => DetailedProduct(product: Product(productId: '', productName: 'Unknown', unitPrice: 0, stockQuantity: 0))
+                          ).product;
+                          
+                          return ListTile(
+                            title: Text(product.productName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text('${item.quantity} x \$${item.unitPrice.toStringAsFixed(2)}'),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product.product.productName,
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      Text(
-                                        '${item.quantity} × \$${item.unitPrice.toStringAsFixed(2)}',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color.fromARGB(255, 0, 0, 0)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                                 Text(
                                   NumberFormat.currency(symbol: '\$').format(item.quantity * item.unitPrice),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontSize: 16,
-                                  ),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                 ),
+                                const SizedBox(width: 8),
                                 IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                  onPressed: () => _removeSaleItem(itemIndex),
+                                  icon: Icon(Icons.remove_circle_outline, color: Colors.red.shade300),
+                                  onPressed: () => _removeSaleItem(index),
                                 ),
                               ],
                             ),
                           );
-                        }).toList(),
-                        const Divider(),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                        },
+                      ),
+                    // Total Footer
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.05),
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Amount', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(
+                            NumberFormat.currency(symbol: '\$').format(_totalAmount),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Total Amount:',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                NumberFormat.currency(symbol: '\$').format(_totalAmount),
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-              const SizedBox(height: 24),
-
-              // Submit Button
-              ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState?.saveAndValidate() ?? false) {
-                    if (_currentSaleItems.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please add at least one product to the sale.')),
-                      );
-                      return;
-                    }
-
-                    final data = _formKey.currentState!.value;
-                    final saleId = isEditing ? widget.detailedSale!.sale.saleId : const Uuid().v4();
-
-                    final newSale = Sale(
-                      saleId: saleId,
-                      customerId: data['customer_id'],
-                      saleDate: data['sale_date'],
-                      totalAmount: _totalAmount,
-                      paymentMethod: data['payment_method'],
-                    );
-
-                    final finalSaleItems = _currentSaleItems.map((item) => item.copyWith(saleId: saleId)).toList();
-
-                    try {
-                      if (isEditing) {
-                        await Provider.of<SaleProvider>(context, listen: false).updateSale(newSale, finalSaleItems);
-                        await Provider.of<ProductProvider>(context, listen: false).fetchProducts();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Sale updated successfully!'),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      } else {
-                        await Provider.of<SaleProvider>(context, listen: false).addSale(newSale, finalSaleItems);
-                        await Provider.of<ProductProvider>(context, listen: false).fetchProducts();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Sale added successfully!'),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                      Navigator.of(context).pop();
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error: ${e.toString()}'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(isEditing ? Icons.save : Icons.add_shopping_cart),
-                    const SizedBox(width: 8),
-                    Text(isEditing ? 'Update Sale' : 'Create Sale'),
                   ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Submit
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState?.saveAndValidate() ?? false) {
+                      if (_currentSaleItems.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add items to cart.')));
+                        return;
+                      }
+
+                      final data = _formKey.currentState!.value;
+                      final saleId = isEditing ? widget.detailedSale!.sale.saleId : const Uuid().v4();
+
+                      final newSale = Sale(
+                        saleId: saleId,
+                        customerId: data['customer_id'],
+                        saleDate: data['sale_date'],
+                        totalAmount: _totalAmount,
+                        paymentMethod: data['payment_method'],
+                      );
+
+                      final finalSaleItems = _currentSaleItems.map((item) => item.copyWith(saleId: saleId)).toList();
+
+                      try {
+                        if (isEditing) {
+                          await Provider.of<SaleProvider>(context, listen: false).updateSale(newSale, finalSaleItems);
+                        } else {
+                          await Provider.of<SaleProvider>(context, listen: false).addSale(newSale, finalSaleItems);
+                        }
+                        // Refresh products to update stock
+                        if (mounted) {
+                          await Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sale saved successfully!')));
+                          Navigator.pop(context);
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 2,
+                  ),
+                  child: Text(isEditing ? 'Update Sale' : 'Complete Sale', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
@@ -535,53 +414,28 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
 
   Widget _buildAddProductSection(BuildContext context, ProductProvider productProvider) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.add_circle, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text('Add Products', style: Theme.of(context).textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Select Product',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-              ),
+              decoration: _fieldDecoration('Select Product', Icons.inventory_2),
               value: _selectedProductId,
+              isExpanded: true,
               items: productProvider.products
                   .where((p) => p.product.status == 'Available' && p.product.stockQuantity > 0)
                   .map((p) => DropdownMenuItem(
                         value: p.product.productId,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(p.product.productName),
-                            Text(
-                              'Stock: ${p.product.stockQuantity} • \$${p.product.unitPrice.toStringAsFixed(2)}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          '${p.product.productName} (\$${p.product.unitPrice}) - ${p.product.stockQuantity} in stock',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14),
                         ),
                       ))
                   .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedProductId = value;
-                });
-              },
+              onChanged: (value) => setState(() => _selectedProductId = value),
             ),
             const SizedBox(height: 12),
             Row(
@@ -589,18 +443,10 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                 Expanded(
                   child: TextField(
                     controller: _quantityController,
-                    decoration: InputDecoration(
-                      labelText: 'Quantity',
-                      hintText: '1',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                    ),
+                    decoration: _fieldDecoration('Quantity', Icons.onetwothree),
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
-                      if (int.tryParse(value) == null && value.isNotEmpty) {
-                        _quantityController.text = '1';
-                      }
+                      if (int.tryParse(value) == null && value.isNotEmpty) _quantityController.text = '1';
                     },
                   ),
                 ),
@@ -614,19 +460,16 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                       final quantity = int.tryParse(_quantityController.text) ?? 1;
                       _addSaleItem(product, quantity);
                       _quantityController.text = '1';
-                      setState(() {
-                        _selectedProductId = null;
-                      });
+                      setState(() => _selectedProductId = null);
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please select a product first.')),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a product first.')));
                     }
                   },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: const Text('Add to Cart'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -634,6 +477,13 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 8),
+      child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
     );
   }
 }

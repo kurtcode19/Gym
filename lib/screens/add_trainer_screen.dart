@@ -7,7 +7,7 @@ import 'package:gym/providers/trainer_provider.dart';
 import 'package:intl/intl.dart';
 
 class AddTrainerScreen extends StatefulWidget {
-  final Trainer? trainer; // Optional: for editing existing trainer
+  final Trainer? trainer; 
 
   const AddTrainerScreen({super.key, this.trainer});
 
@@ -17,6 +17,20 @@ class AddTrainerScreen extends StatefulWidget {
 
 class _AddTrainerScreenState extends State<AddTrainerScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
+
+  InputDecoration _fieldDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.blueGrey),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,89 +52,161 @@ class _AddTrainerScreenState extends State<AddTrainerScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Trainer' : 'Add Trainer'),
+        title: Text(isEditing ? 'Edit Profile' : 'New Trainer'),
+        centerTitle: true,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: FormBuilder(
-          key: _formKey,
-          initialValue: initialValues,
-          child: ListView(
-            children: [
-              FormBuilderTextField(
-                name: 'first_name',
-                decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (value) => value == null || value.isEmpty ? 'First name cannot be empty' : null,
-              ),
-              const SizedBox(height: 16),
-              FormBuilderTextField(
-                name: 'last_name',
-                decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (value) => value == null || value.isEmpty ? 'Last name cannot be empty' : null,
-              ),
-              const SizedBox(height: 16),
-              FormBuilderTextField(
-                name: 'email',
-                decoration: const InputDecoration(labelText: 'Email (Optional)'),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value != null && value.isNotEmpty && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              FormBuilderTextField(
-                name: 'phone_number',
-                decoration: const InputDecoration(labelText: 'Phone Number (Optional)'),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              FormBuilderDateTimePicker(
-                name: 'hire_date',
-                decoration: const InputDecoration(labelText: 'Hire Date'),
-                inputType: InputType.date,
-                format: DateFormat('yyyy-MM-dd'),
-                validator: (value) => value == null ? 'Hire date cannot be empty' : null,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState?.saveAndValidate() ?? false) {
-                    final data = _formKey.currentState!.value;
-                    final newTrainer = Trainer(
-                      trainerId: isEditing ? widget.trainer!.trainerId : null,
-                      firstName: data['first_name'],
-                      lastName: data['last_name'],
-                      email: data['email'],
-                      phoneNumber: data['phone_number'],
-                      hireDate: data['hire_date'],
-                    );
-
-                    if (isEditing) {
-                      await Provider.of<TrainerProvider>(context, listen: false).updateTrainer(newTrainer);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${newTrainer.firstName} updated successfully!')),
-                      );
-                    } else {
-                      await Provider.of<TrainerProvider>(context, listen: false).addTrainer(newTrainer);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${newTrainer.firstName} added successfully!')),
-                      );
-                    }
-                    Navigator.of(context).pop();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: FormBuilder(
+            key: _formKey,
+            initialValue: initialValues,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader('Personal Information'),
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey.shade200)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        FormBuilderTextField(
+                          name: 'first_name',
+                          decoration: _fieldDecoration('First Name', Icons.person),
+                          validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        FormBuilderTextField(
+                          name: 'last_name',
+                          decoration: _fieldDecoration('Last Name', Icons.person_outline),
+                          validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        FormBuilderDateTimePicker(
+                          name: 'hire_date',
+                          decoration: _fieldDecoration('Date Hired', Icons.date_range),
+                          inputType: InputType.date,
+                          format: DateFormat('yyyy-MM-dd'),
+                          validator: (value) => value == null ? 'Required' : null,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Text(isEditing ? 'Update Trainer' : 'Add Trainer'),
-              ),
-            ],
+                
+                const SizedBox(height: 24),
+                _buildSectionHeader('Contact Details'),
+                
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey.shade200)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        FormBuilderTextField(
+                          name: 'email',
+                          decoration: _fieldDecoration('Email Address', Icons.email),
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                              return 'Enter a valid email';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        FormBuilderTextField(
+                          name: 'phone_number',
+                          decoration: _fieldDecoration('Phone Number', Icons.phone),
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (_formKey.currentState?.saveAndValidate() ?? false) {
+                        final data = _formKey.currentState!.value;
+                        final newTrainer = Trainer(
+                          trainerId: isEditing ? widget.trainer!.trainerId : null,
+                          firstName: data['first_name'],
+                          lastName: data['last_name'],
+                          email: data['email'],
+                          phoneNumber: data['phone_number'],
+                          hireDate: data['hire_date'],
+                        );
+
+                        try {
+                          if (isEditing) {
+                            await Provider.of<TrainerProvider>(context, listen: false).updateTrainer(newTrainer);
+                            if (context.mounted) _showSnackBar('Trainer updated successfully!');
+                          } else {
+                            await Provider.of<TrainerProvider>(context, listen: false).addTrainer(newTrainer);
+                            if (context.mounted) _showSnackBar('Trainer added successfully!');
+                          }
+                          if (context.mounted) Navigator.of(context).pop();
+                        } catch (e) {
+                          if (context.mounted) _showSnackBar('Error: $e', isError: true);
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 2,
+                    ),
+                    child: Text(
+                      isEditing ? 'Save Changes' : 'Add Trainer',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 12),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey[700],
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

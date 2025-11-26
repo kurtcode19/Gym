@@ -3,7 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:gym/models/class_booking.dart';
 import 'package:gym/providers/database_helper.dart';
-import 'package:gym/models/class.dart'; // Import Class to get schedule details
+import 'package:gym/models/class.dart';
+import 'package:intl/intl.dart'; 
 
 // Model to hold joined class booking data for display
 class DetailedClassBooking {
@@ -41,33 +42,29 @@ class DetailedClassBooking {
   }
 
   String get customerFullName => '$customerFirstName $customerLastName';
-  String get trainerFullName {
-    if (trainerFirstName != null && trainerLastName != null) {
-      return '$trainerFirstName $trainerLastName';
-    }
-    return 'N/A';
-  }
+  String get trainerFullName => (trainerFirstName != null && trainerLastName != null) 
+      ? '$trainerFirstName $trainerLastName' 
+      : 'N/A';
 }
 
 class ClassBookingProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
-  List<DetailedClassBooking> _allBookings = []; // Keep all bookings
-  List<DetailedClassBooking> _filteredBookings = []; // For search results
+  List<DetailedClassBooking> _allBookings = []; 
+  List<DetailedClassBooking> _filteredBookings = []; 
   bool _isLoading = false;
 
   ClassBookingProvider(this._dbHelper) {
     fetchClassBookings();
   }
 
-  List<DetailedClassBooking> get bookings => _filteredBookings; // Returns current search results
-  List<DetailedClassBooking> get allBookings => _allBookings; // Allows raw access to all data
+  List<DetailedClassBooking> get bookings => _filteredBookings; 
+  List<DetailedClassBooking> get allBookings => _allBookings;
   bool get isLoading => _isLoading;
 
-  // NEW: Getter to get a set of unique dates that have bookings
   Set<DateTime> get bookingDates {
     return _allBookings.map((db) {
-      final date = db.classScheduleTime; // Use class schedule time for calendar events
-      return DateTime.utc(date.year, date.month, date.day); // Normalize to UTC date-only
+      final date = db.classScheduleTime;
+      return DateTime.utc(date.year, date.month, date.day); 
     }).toSet();
   }
 
@@ -81,7 +78,7 @@ class ClassBookingProvider with ChangeNotifier {
     try {
       final bookingMaps = await _dbHelper.getDetailedClassBookings();
       _allBookings = bookingMaps.map((map) => DetailedClassBooking.fromMap(map)).toList();
-      _filteredBookings = List.from(_allBookings); // Initialize filtered with all
+      _filteredBookings = List.from(_allBookings); 
     } catch (e) {
       print('Error fetching class bookings: $e');
     } finally {
@@ -89,17 +86,15 @@ class ClassBookingProvider with ChangeNotifier {
     }
   }
 
-  // NEW: Get bookings for a specific day
   List<DetailedClassBooking> getBookingsForDay(DateTime day) {
     return _allBookings.where((db) {
-      final classDate = db.classScheduleTime; // Use class schedule time for events
+      final classDate = db.classScheduleTime;
       return classDate.year == day.year &&
              classDate.month == day.month &&
              classDate.day == day.day;
     }).toList();
   }
 
-  // NEW: Get booking counts for a given month (for stats cards)
   Map<String, int> getBookingCountsForMonth(DateTime month) {
     final startOfMonth = DateTime.utc(month.year, month.month, 1);
     final endOfMonth = DateTime.utc(month.year, month.month + 1, 0, 23, 59, 59);
@@ -123,18 +118,40 @@ class ClassBookingProvider with ChangeNotifier {
       }
     }
 
-    return {
-      'Confirmed': confirmed,
-      'Cancelled': cancelled,
-      'Attended': attended,
-      'No Show': noShow,
-    };
+    return {'Confirmed': confirmed, 'Cancelled': cancelled, 'Attended': attended, 'No Show': noShow};
+  }
+
+  // --- NEW: VALIDATION LOGIC ---
+  // Requires the details of the Class being booked to check for time overlaps
+  String? validateBooking(String customerId, GymClass targetClass, {String? excludeBookingId}) {
+    // 1. Get all active bookings for this customer
+    final customerBookings = _allBookings.where((b) => 
+      b.booking.customerId == customerId && 
+      b.booking.status != 'Cancelled' && 
+      b.booking.bookingId != excludeBookingId // Skip itself if editing
+    ).toList();
+
+    // 2. Define Time Range for New Booking
+    final newStart = targetClass.scheduleTime;
+    final newEnd = newStart.add(Duration(minutes: targetClass.durationMinutes));
+
+    // 3. Check for Overlap
+    for (var existing in customerBookings) {
+      final existingStart = existing.classScheduleTime;
+      final existingEnd = existingStart.add(Duration(minutes: existing.classDurationMinutes));
+
+      // Overlap Logic: (StartA < EndB) and (EndA > StartB)
+      if (newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart)) {
+        return "Customer is already booked for '${existing.className}' at this time (${DateFormat('h:mm a').format(existingStart)}).";
+      }
+    }
+    return null; // No conflict
   }
 
   Future<void> addClassBooking(ClassBooking booking) async {
     try {
       await _dbHelper.insertClassBooking(booking.toJson());
-      await fetchClassBookings(); // Re-fetch to update all data and notify listeners
+      await fetchClassBookings(); 
     } catch (e) {
       print('Error adding class booking: $e');
       rethrow;
@@ -144,7 +161,7 @@ class ClassBookingProvider with ChangeNotifier {
   Future<void> updateClassBooking(ClassBooking booking) async {
     try {
       await _dbHelper.updateClassBooking(booking.toJson());
-      await fetchClassBookings(); // Re-fetch to update all data and notify listeners
+      await fetchClassBookings();
     } catch (e) {
       print('Error updating class booking: $e');
       rethrow;
@@ -154,11 +171,12 @@ class ClassBookingProvider with ChangeNotifier {
   Future<void> deleteClassBooking(String bookingId) async {
     try {
       await _dbHelper.deleteClassBooking(bookingId);
-      await fetchClassBookings(); // Re-fetch to update all data and notify listeners
+      await fetchClassBookings();
     } catch (e) {
       print('Error deleting class booking: $e');
     }
   }
+
 
   // This search method is now for general filtering if needed, not primary calendar interaction
   void searchClassBookings(String query) {

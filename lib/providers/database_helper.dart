@@ -21,18 +21,32 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    // Database name corrected to 'gym.db' as per your provided content
     String path = join(await getDatabasesPath(), 'gym.db');
     return await openDatabase(
       path,
-      version: 2, // Change from 1 to 2
+      version: 3, // CHANGED FROM 2 TO 3
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future _onCreate(Database db, int version) async {
-    // CUSTOMER Table
+    // ... (Previous tables: CUSTOMER, MEMBERSHIP_PLAN, etc. remain exactly the same)
+
+    // UPDATED ATTENDANCE Table for new installs
+    await db.execute('''
+      CREATE TABLE ATTENDANCE (
+        attendance_id TEXT PRIMARY KEY,
+        member_id TEXT NOT NULL,
+        checkin_time INTEGER NOT NULL,
+        checkout_time INTEGER,
+        date INTEGER NOT NULL,
+        facility_used TEXT,
+        type TEXT DEFAULT 'Member',
+        amount_paid REAL DEFAULT 0.0,
+        FOREIGN KEY (member_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE
+      )
+    ''');
     await db.execute('''
       CREATE TABLE CUSTOMER (
         customer_id TEXT PRIMARY KEY,
@@ -72,18 +86,7 @@ await db.execute('''
       )
     ''');
 
-    // ATTENDANCE Table
-    await db.execute('''
-      CREATE TABLE ATTENDANCE (
-        attendance_id TEXT PRIMARY KEY,
-        member_id TEXT NOT NULL, -- FK to CUSTOMER
-        checkin_time INTEGER NOT NULL,
-        checkout_time INTEGER,
-        date INTEGER NOT NULL,
-        facility_used TEXT,
-        FOREIGN KEY (member_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE
-      )
-    ''');
+
 
     // TRAINER Table
     await db.execute('''
@@ -207,11 +210,19 @@ await db.execute('''
 
     print('Database created with all tables.');
   }
+    Future<String> getDbPath() async {
+    return join(await getDatabasesPath(), 'gym.db');
+  }
 
+  Future<void> close() async {
+    final db = await database;
+    await db.close();
+    _database = null; // Reset the singleton
+  }
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     print('Database upgrading from version $oldVersion to $newVersion');
     
-    if (oldVersion == 1 && newVersion == 2) {
+    if (oldVersion < 2) {
       // Create temporary table with new schema
       await db.execute('''
         CREATE TABLE MEMBERSHIP_PLAN_NEW (
@@ -242,6 +253,13 @@ await db.execute('''
       await db.execute('ALTER TABLE MEMBERSHIP_PLAN_NEW RENAME TO MEMBERSHIP_PLAN');
       
       print('MEMBERSHIP_PLAN table upgraded successfully');
+    }
+        // NEW LOGIC FOR v2 to v3
+    if (oldVersion < 3) {
+      print('Upgrading ATTENDANCE table columns');
+      // SQLite requires separate statements for adding columns
+      await db.execute("ALTER TABLE ATTENDANCE ADD COLUMN type TEXT DEFAULT 'Member'");
+      await db.execute("ALTER TABLE ATTENDANCE ADD COLUMN amount_paid REAL DEFAULT 0.0");
     }
   }
 

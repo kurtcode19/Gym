@@ -303,7 +303,7 @@ class SalesScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    NumberFormat.currency(symbol: '\P').format(sale.totalAmount),
+                    NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(sale.totalAmount),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

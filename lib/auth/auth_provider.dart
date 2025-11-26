@@ -1,13 +1,13 @@
-// lib/auth/auth_provider.dart
+// lib/auth/auth_provider.dart - UPDATED
 import 'package:flutter/material.dart';
-import 'package:gym/auth/auth_service.dart'; // Corrected import
+import 'package:gym/auth/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService;
 
   bool _isAuthenticated = false;
   bool _isOnboarded = false;
-  bool _isLoading = true; // Added loading state for initial check
+  bool _isLoading = true;
 
   AuthProvider(this._authService) {
     _checkAuthStatus();
@@ -21,9 +21,6 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     _isOnboarded = await _authService.isOnboarded();
-    // If onboarded, check if a PIN exists. If so, they need to log in.
-    // We don't auto-authenticate on app start for PIN-based systems.
-    // _isAuthenticated will remain false initially.
     _isLoading = false;
     notifyListeners();
   }
@@ -41,15 +38,21 @@ class AuthProvider with ChangeNotifier {
   Future<void> logout() async {
     _isAuthenticated = false;
     notifyListeners();
-    // No need to clear pin/onboarded status on logout, just reset auth state
   }
 
-  Future<bool> setPin(String pin) async {
+  // UPDATED: Now accepts security question and answer
+  Future<bool> setPin(String pin, {String? question, String? answer}) async {
     try {
       await _authService.savePin(pin);
+      
+      // Save security info if provided
+      if (question != null && answer != null) {
+        await _authService.saveSecurityInfo(question, answer);
+      }
+
       await _authService.setOnboarded(true);
       _isOnboarded = true;
-      _isAuthenticated = true; // Auto-authenticate after setting PIN
+      _isAuthenticated = true;
       notifyListeners();
       return true;
     } catch (e) {
@@ -58,7 +61,16 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // This method would be used if there's a "Forgot PIN" or reset functionality
+  // NEW: Get the saved question to show user
+  Future<String?> getSecurityQuestion() async {
+    return await _authService.getSecurityQuestion();
+  }
+
+  // NEW: Validate answer
+  Future<bool> recoverAccount(String answer) async {
+    return await _authService.validateSecurityAnswer(answer);
+  }
+
   Future<void> resetAuth() async {
     await _authService.clearAuthData();
     _isOnboarded = false;

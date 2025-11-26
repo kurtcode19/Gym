@@ -46,10 +46,15 @@ dependencies:
   uuid: ^4.2.1 # For generating unique IDs
   shared_preferences: ^2.2.2 # NEW: For local data storage (e.g., authentication status, PIN)
   # UI/Charts
-  fl_chart: ^0.65.0 # For data visualization (e.g., dashboard)
+  fl_chart: ^1.1.1 # For data visualization (e.g., dashboard)
   google_fonts: ^6.1.0 # For custom fonts
   flutter_form_builder: ^9.1.1 # For easier form creation
   table_calendar: ^3.0.9 # NEW: For the interactive calendar
+  share_plus: ^9.0.0       # To share the file to Drive/Email
+  file_picker: ^8.0.0      # To pick the backup file for restoring
+  path_provider: ^2.1.2    # To find file paths
+  permission_handler: ^11.3.0 # For storage permissions (Android 10+)
+  restart_app: ^1.2.1      # To restart app after restore (cleanest way)
 
 dev_dependencies:
   flutter_test:

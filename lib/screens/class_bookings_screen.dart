@@ -1,12 +1,11 @@
-// lib/screens/class_bookings_screen.dart - UPDATED FOR EVENT CALENDAR UI
-
+// lib/screens/class_bookings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gym/providers/class_booking_provider.dart';
 import 'package:gym/screens/add_class_booking_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:gym/models/class_booking.dart'; // Import for DetailedClassBooking
+import 'package:gym/models/class_booking.dart';
 
 class ClassBookingsScreen extends StatefulWidget {
   const ClassBookingsScreen({super.key});
@@ -24,23 +23,19 @@ class _ClassBookingsScreenState extends State<ClassBookingsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDay = _focusedDay; // Initially select today
-    _updateStatsAndBookings(context); // Load initial stats and bookings
+    _selectedDay = _focusedDay;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateStatsAndBookings(context);
+    });
   }
 
-  // Helper to get color for status dot/card
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'confirmed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      case 'attended':
-        return Colors.blue;
-      case 'no show':
-        return Colors.orange;
-      default:
-        return Colors.grey;
+      case 'confirmed': return Colors.green;
+      case 'cancelled': return Colors.red;
+      case 'attended': return Colors.blue;
+      case 'no show': return Colors.orange;
+      default: return Colors.grey;
     }
   }
 
@@ -53,16 +48,11 @@ class _ClassBookingsScreenState extends State<ClassBookingsScreen> {
   }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    // Normalize dates to remove time for comparison
-    final normalizedSelectedDay = DateTime.utc(selectedDay.year, selectedDay.month, selectedDay.day);
-    final normalizedFocusedDay = DateTime.utc(focusedDay.year, focusedDay.month, focusedDay.day);
-
-    if (!isSameDay(_selectedDay, normalizedSelectedDay)) {
+    if (!isSameDay(_selectedDay, selectedDay)) {
       setState(() {
-        _selectedDay = normalizedSelectedDay;
-        _focusedDay = normalizedFocusedDay;
+        _selectedDay = selectedDay;
+        _focusedDay = focusedDay;
       });
-      // Update the list of bookings for the newly selected day
       final bookingProvider = Provider.of<ClassBookingProvider>(context, listen: false);
       setState(() {
         _selectedDayBookings = bookingProvider.getBookingsForDay(_selectedDay!);
@@ -72,249 +62,291 @@ class _ClassBookingsScreenState extends State<ClassBookingsScreen> {
 
   void _onPageChanged(DateTime focusedDay) {
     _focusedDay = focusedDay;
-    // When the month changes, update the monthly stats
     _updateStatsAndBookings(context);
   }
-
-  // Widget to build the small stat cards like in the image
-  Widget _buildStatCard({
-    required String title,
-    required int count,
-    required Color dotColor,
-  }) {
-    return Expanded(
-      child: Card(
-        margin: EdgeInsets.zero,
-        elevation: 1,
-        color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: dotColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text('$count', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
 
   @override
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<ClassBookingProvider>(context);
 
-    // Update stats and bookings whenever the provider notifies listeners (e.g., after add/delete)
-    // This is a simple way to ensure the UI refreshes after data changes.
-    // In a more complex scenario, you might only update specific parts or use a selector.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateStatsAndBookings(context);
-    });
-
-    if (bookingProvider.isLoading) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Class Bookings')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Match dashboard background
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Class Bookings Calendar'),
+        title: const Text('Schedule & Bookings', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        elevation: 0,
       ),
       body: Column(
         children: [
-          // Stat Cards (similar to the image)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
+          // 1. MONTHLY STATS PANEL
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+            ),
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor, // Use app's primary color
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))],
               ),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildStatCard(title: 'Confirmed', count: _currentMonthStats['Confirmed'] ?? 0, dotColor: _getStatusColor('confirmed')),
-                      const SizedBox(width: 8),
-                      _buildStatCard(title: 'Attended', count: _currentMonthStats['Attended'] ?? 0, dotColor: _getStatusColor('attended')),
-                      const SizedBox(width: 8),
-                      _buildStatCard(title: 'No Show', count: _currentMonthStats['No Show'] ?? 0, dotColor: _getStatusColor('no show')),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildStatCard(title: 'Cancelled', count: _currentMonthStats['Cancelled'] ?? 0, dotColor: _getStatusColor('cancelled')),
-                      // Add more stat cards as needed, e.g., 'Upcoming'
-                    ],
-                  ),
+                  _buildStatItem('Confirmed', _currentMonthStats['Confirmed'] ?? 0, Colors.green),
+                  _buildVerticalDivider(),
+                  _buildStatItem('Attended', _currentMonthStats['Attended'] ?? 0, Colors.blue),
+                  _buildVerticalDivider(),
+                  _buildStatItem('No Show', _currentMonthStats['No Show'] ?? 0, Colors.orange),
+                  _buildVerticalDivider(),
+                  _buildStatItem('Cancelled', _currentMonthStats['Cancelled'] ?? 0, Colors.red),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
 
-          // TableCalendar
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 8.0),
-            elevation: 2,
-            child: TableCalendar(
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.utc(2030, 12, 31),
-              focusedDay: _focusedDay,
-              calendarFormat: CalendarFormat.month,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: _onDaySelected,
-              onPageChanged: _onPageChanged,
-              eventLoader: (day) {
-                // Returns a list of objects for events, even a simple boolean list works
-                final normalizedDay = DateTime.utc(day.year, day.month, day.day);
-                return bookingProvider.bookingDates.contains(normalizedDay) ? [true] : [];
-              },
-              calendarStyle: CalendarStyle(
-                weekendTextStyle: const TextStyle(color: Colors.red),
-                outsideDaysVisible: false,
-                todayDecoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  shape: BoxShape.circle,
-                ),
-                markerDecoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondary, // Small dot for days with bookings
-                  shape: BoxShape.circle,
-                ),
-              ),
-              headerStyle: HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-                titleTextStyle: Theme.of(context).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
-              ),
-              daysOfWeekStyle: DaysOfWeekStyle(
-                weekdayStyle: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold),
-                weekendStyle: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // List of bookings for the selected day
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text(
-                    _selectedDay != null
-                        ? 'Bookings for ${DateFormat('EEE, MMM d, yyyy').format(_selectedDay!)}:'
-                        : 'Select a day to see bookings:',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                Expanded(
-                  child: _selectedDayBookings.isEmpty
-                      ? const Center(child: Text('No bookings for this day.'))
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(8.0),
-                          itemCount: _selectedDayBookings.length,
-                          itemBuilder: (context, index) {
-                            final detailedBooking = _selectedDayBookings[index];
-                            final booking = detailedBooking.booking;
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 4.0),
-                              elevation: 2,
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: _getStatusColor(booking.status),
-                                  child: Text(
-                                    booking.status[0].toUpperCase(),
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                title: Text(
-                                  '${detailedBooking.customerFullName} - ${detailedBooking.className}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Time: ${DateFormat('h:mm a').format(detailedBooking.classScheduleTime)} (${detailedBooking.classDurationMinutes} min)'),
-                                    Text('Trainer: ${detailedBooking.trainerFullName}'),
-                                    Text('Status: ${booking.status}'),
-                                  ],
-                                ),
-                                isThreeLine: true,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => AddClassBookingScreen(booking: booking),
-                                    ),
-                                  );
-                                },
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                  onPressed: () {
-                                    _confirmDelete(context, bookingProvider, booking);
-                                  },
-                                ),
-                              ),
-                            );
-                          },
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  
+                  // 2. CALENDAR
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      child: TableCalendar(
+                        firstDay: DateTime.utc(2020, 1, 1),
+                        lastDay: DateTime.utc(2030, 12, 31),
+                        focusedDay: _focusedDay,
+                        calendarFormat: CalendarFormat.week, // Default to week for better space
+                        availableCalendarFormats: const {
+                          CalendarFormat.month: 'Month',
+                          CalendarFormat.week: 'Week',
+                        },
+                        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                        onDaySelected: _onDaySelected,
+                        onPageChanged: _onPageChanged,
+                        eventLoader: (day) {
+                          final normalizedDay = DateTime.utc(day.year, day.month, day.day);
+                          return bookingProvider.bookingDates.contains(normalizedDay) ? [true] : [];
+                        },
+                        calendarStyle: CalendarStyle(
+                          todayDecoration: BoxDecoration(color: Colors.blue.shade200, shape: BoxShape.circle),
+                          selectedDecoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
+                          markerDecoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                          markersMaxCount: 1,
                         ),
-                ),
-              ],
+                        headerStyle: const HeaderStyle(formatButtonVisible: true, titleCentered: true, formatButtonShowsNext: false),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 3. BOOKINGS LIST HEADER
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Bookings",
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+                        ),
+                        Text(
+                          DateFormat('MMMM d').format(_selectedDay!),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+
+                  // 4. BOOKINGS LIST
+                  if (_selectedDayBookings.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40.0),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(Icons.calendar_today_outlined, size: 60, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text("No bookings for this day", style: TextStyle(color: Colors.grey[500])),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _selectedDayBookings.length,
+                      itemBuilder: (context, index) {
+                        final db = _selectedDayBookings[index];
+                        final booking = db.booking;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => AddClassBookingScreen(booking: booking)),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Time Badge
+                                  Column(
+                                    children: [
+                                      Text(
+                                        DateFormat('h:mm').format(db.classScheduleTime),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      Text(
+                                        DateFormat('a').format(db.classScheduleTime),
+                                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        width: 2,
+                                        height: 30,
+                                        color: Colors.grey[200],
+                                      )
+                                    ],
+                                  ),
+                                  const SizedBox(width: 16),
+                                  
+                                  // Details
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          db.className,
+                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.person, size: 14, color: Colors.grey[600]),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              db.customerFullName,
+                                              style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.sports_gymnastics, size: 14, color: Colors.grey[500]),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              "Trainer: ${db.trainerFullName}",
+                                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  
+                                  // Status & Menu
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: _getStatusColor(booking.status).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          booking.status,
+                                          style: TextStyle(
+                                            color: _getStatusColor(booking.status),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      InkWell(
+                                        onTap: () => _confirmDelete(context, bookingProvider, booking),
+                                        child: Icon(Icons.delete_outline, color: Colors.red[300], size: 20),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    
+                  const SizedBox(height: 80), // Space for FAB
+                ],
+              ),
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const AddClassBookingScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const AddClassBookingScreen()),
           );
         },
-        child: const Icon(Icons.add),
+        label: const Text("Book Class"),
+        icon: const Icon(Icons.add),
+        backgroundColor: Theme.of(context).primaryColor,
       ),
+    );
+  }
+
+  Widget _buildStatItem(String label, int count, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          count.toString(),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVerticalDivider() {
+    return Container(
+      height: 20,
+      width: 1,
+      color: Colors.grey[300],
     );
   }
 
@@ -323,22 +355,22 @@ class _ClassBookingsScreenState extends State<ClassBookingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Delete Booking'),
-          content: Text('Are you sure you want to delete this class booking?'),
+          title: const Text('Cancel Booking?'),
+          content: const Text('Are you sure you want to delete this booking record?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           actions: <Widget>[
             TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              child: const Text('No'),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            TextButton(
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Yes, Delete', style: TextStyle(color: Colors.white)),
               onPressed: () {
                 bookingProvider.deleteClassBooking(booking.bookingId);
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Class booking deleted.')),
+                  const SnackBar(content: Text('Booking deleted.')),
                 );
               },
             ),

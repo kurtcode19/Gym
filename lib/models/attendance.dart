@@ -1,4 +1,3 @@
-// lib/models/attendance.dart
 import 'package:uuid/uuid.dart';
 
 class Attendance {
@@ -6,8 +5,11 @@ class Attendance {
   final String memberId; // FK to CUSTOMER
   final DateTime checkinTime;
   final DateTime? checkoutTime;
-  final DateTime date; // Only date part, for grouping/filtering
+  final DateTime date;
   final String? facilityUsed;
+  // NEW FIELDS
+  final String type; // 'Member', 'Walk-In', 'Guest'
+  final double amountPaid;
 
   Attendance({
     String? attendanceId,
@@ -16,8 +18,10 @@ class Attendance {
     this.checkoutTime,
     DateTime? date,
     this.facilityUsed,
+    this.type = 'Member', // Default value
+    this.amountPaid = 0.0,
   })  : attendanceId = attendanceId ?? const Uuid().v4(),
-        date = date ?? DateTime(checkinTime.year, checkinTime.month, checkinTime.day); // Date from checkin time
+        date = date ?? DateTime(checkinTime.year, checkinTime.month, checkinTime.day);
 
   Map<String, dynamic> toJson() {
     return {
@@ -27,6 +31,8 @@ class Attendance {
       'checkout_time': checkoutTime != null ? checkoutTime!.millisecondsSinceEpoch ~/ 1000 : null,
       'date': date.millisecondsSinceEpoch ~/ 1000,
       'facility_used': facilityUsed,
+      'type': type,
+      'amount_paid': amountPaid,
     };
   }
 
@@ -38,6 +44,8 @@ class Attendance {
       checkoutTime: json['checkout_time'] != null ? DateTime.fromMillisecondsSinceEpoch(json['checkout_time'] * 1000) : null,
       date: DateTime.fromMillisecondsSinceEpoch(json['date'] * 1000),
       facilityUsed: json['facility_used'],
+      type: json['type'] ?? 'Member', // Fallback for old records
+      amountPaid: (json['amount_paid'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -48,6 +56,8 @@ class Attendance {
     DateTime? checkoutTime,
     DateTime? date,
     String? facilityUsed,
+    String? type,
+    double? amountPaid,
   }) {
     return Attendance(
       attendanceId: attendanceId ?? this.attendanceId,
@@ -56,6 +66,8 @@ class Attendance {
       checkoutTime: checkoutTime ?? this.checkoutTime,
       date: date ?? this.date,
       facilityUsed: facilityUsed ?? this.facilityUsed,
+      type: type ?? this.type,
+      amountPaid: amountPaid ?? this.amountPaid,
     );
   }
 }

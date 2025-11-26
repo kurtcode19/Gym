@@ -2,24 +2,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-
 import 'package:gym/models/membership.dart';
-import 'package:gym/models/customer.dart';
 import 'package:gym/models/membership_plan.dart';
 import 'package:gym/providers/membership_provider.dart';
 import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/membership_plan_provider.dart';
+import 'package:intl/intl.dart';
 
 class AddMembershipScreen extends StatefulWidget {
   final Membership? membership;
+  final bool isRenewal; // NEW parameter
 
-  const AddMembershipScreen({super.key, this.membership});
+  const AddMembershipScreen({
+    super.key, 
+    this.membership,
+    this.isRenewal = false,
+  });
 
   @override
   State<AddMembershipScreen> createState() => _AddMembershipScreenState();
 }
-
 class _AddMembershipScreenState extends State<AddMembershipScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
   final _scrollController = ScrollController();

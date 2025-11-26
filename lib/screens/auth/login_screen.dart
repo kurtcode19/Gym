@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:gym/auth/auth_provider.dart';
 import 'package:gym/widgets/pin_input_field.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:gym/screens/forgot_pin_screen.dart'; // Import the forgot pin screen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
-            children: [
+            children: const [
               Icon(Icons.check_circle, color: Colors.white),
               SizedBox(width: 8),
               Text('Login successful!'),
@@ -124,12 +125,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
+                          gradient: const LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              const Color.fromARGB(255, 5, 157, 96),
-                              const Color.fromARGB(255, 13, 217, 51),
+                              Color.fromARGB(255, 5, 157, 96),
+                              Color.fromARGB(255, 13, 217, 51),
                             ],
                           ),
                           shape: BoxShape.circle,
@@ -141,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             ),
                           ],
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.fingerprint,
                           size: 50,
                           color: Colors.white,
@@ -227,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             padding: const EdgeInsets.symmetric(horizontal: 32),
                           ),
                           child: _isLoginAttempt
-                              ? SizedBox(
+                              ? const SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
@@ -246,23 +247,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Icon(Icons.arrow_forward_rounded, size: 20),
+                                    const Icon(Icons.arrow_forward_rounded, size: 20),
                                   ],
                                 ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // Forgot PIN with better styling
+                      
+                      // Forgot PIN Button - UPDATED
                       TextButton(
                         onPressed: () {
-                          // TODO: Implement "Forgot PIN" or reset functionality
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Forgot PIN functionality (TODO)'),
-                              backgroundColor: Colors.blue.shade600,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ForgotPinScreen()),
                           );
                         },
                         style: TextButton.styleFrom(
@@ -272,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.help_outline, size: 18),
+                            const Icon(Icons.help_outline, size: 18),
                             const SizedBox(width: 8),
                             Text(
                               'Forgot your PIN?',

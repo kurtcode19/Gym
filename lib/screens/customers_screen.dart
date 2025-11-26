@@ -5,7 +5,7 @@ import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/models/customer.dart';
 import 'package:gym/screens/add_customer_screen.dart';
 import 'package:intl/intl.dart';
-
+import 'package:gym/utils/app_refresher.dart'; // Import the utility
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
 
@@ -295,9 +295,12 @@ class CustomersScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
               ),
               child: const Text('Delete'),
-              onPressed: () {
+              onPressed: () async {
                 customerProvider.deleteCustomer(customer.customerId);
                 Navigator.of(context).pop();
+                  // 2. Refresh everything
+  if (context.mounted) {
+    await AppRefresher.refreshAll(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${customer.firstName} deleted successfully.'),
@@ -305,6 +308,7 @@ class CustomersScreen extends StatelessWidget {
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
+  }
               },
             ),
           ],

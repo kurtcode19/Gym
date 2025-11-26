@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:gym/providers/membership_plan_provider.dart';
 import 'package:gym/models/membership_plan.dart';
 import 'package:gym/screens/add_membership_plan_screen.dart';
+import 'package:gym/screens/add_membership_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:gym/utils/app_refresher.dart'; // Import the utility
 
 class MembershipPlansScreen extends StatelessWidget {
   const MembershipPlansScreen({super.key});
@@ -198,7 +200,7 @@ class MembershipPlansScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    NumberFormat.currency(symbol: '\$').format(plan.monthlyFee),
+                    NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(plan.monthlyFee),
                     style: TextStyle(
                       color: Colors.blue,
                       fontSize: 12,
@@ -217,7 +219,7 @@ class MembershipPlansScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Total: ${NumberFormat.currency(symbol: '\$').format(plan.monthlyFee * plan.durationValue)}',
+              'Total: ${NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(plan.monthlyFee * plan.durationValue)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.grey[600],
                   ),
@@ -297,9 +299,12 @@ class MembershipPlansScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
               ),
               child: const Text('Delete'),
-              onPressed: () {
+              onPressed: () async {
                 planProvider.deleteMembershipPlan(plan.planId);
                 Navigator.of(context).pop();
+                  // 2. Refresh everything
+  if (context.mounted) {
+    await AppRefresher.refreshAll(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${plan.planName} deleted successfully.'),
@@ -307,6 +312,7 @@ class MembershipPlansScreen extends StatelessWidget {
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
+  }
               },
             ),
           ],

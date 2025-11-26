@@ -7,7 +7,7 @@ import 'package:gym/models/trainer.dart';
 
 // Model to hold joined class data for display
 class DetailedGymClass {
-  final GymClass gymClass; // Using 'Class' as the model type as per schema
+  final GymClass gymClass; 
   final String? trainerFirstName;
   final String? trainerLastName;
 
@@ -19,7 +19,7 @@ class DetailedGymClass {
 
   factory DetailedGymClass.fromMap(Map<String, dynamic> map) {
     return DetailedGymClass(
-      gymClass: GymClass.fromJson(map), // Using Class.fromJson
+      gymClass: GymClass.fromJson(map),
       trainerFirstName: map['trainer_first_name'],
       trainerLastName: map['trainer_last_name'],
     );
@@ -35,22 +35,25 @@ class DetailedGymClass {
 
 class ClassProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
-  List<DetailedGymClass> _allClasses = []; // Stores all fetched classes
-  List<DetailedGymClass> _filteredClasses = []; // Stores currently filtered classes
+  List<DetailedGymClass> _allClasses = []; 
+  List<DetailedGymClass> _filteredClasses = []; 
   bool _isLoading = false;
 
+  final TimeOfDay gymOpenTime = const TimeOfDay(hour: 6, minute: 0);
+  final TimeOfDay gymCloseTime = const TimeOfDay(hour: 22, minute: 0);
+
   ClassProvider(this._dbHelper) {
-    fetchGymClasses(); // Fetch all classes on initialization
+    fetchGymClasses(); 
   }
+
 
   List<DetailedGymClass> get classes => _filteredClasses;
   bool get isLoading => _isLoading;
 
-  // NEW: Getter to get a set of unique dates that have classes
   Set<DateTime> get classDates {
     return _allClasses.map((dc) {
       final date = dc.gymClass.scheduleTime;
-      return DateTime.utc(date.year, date.month, date.day); // Use UTC to normalize dates
+      return DateTime.utc(date.year, date.month, date.day); 
     }).toSet();
   }
 
@@ -59,14 +62,12 @@ class ClassProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Fetches all detailed classes, populating _allClasses
   Future<void> fetchGymClasses() async {
     _setLoading(true);
     try {
       final classMaps = await _dbHelper.getDetailedClasses();
       _allClasses = classMaps.map((map) => DetailedGymClass.fromMap(map)).toList();
-      _filteredClasses = List.from(_allClasses); // Initially, filtered list is all classes
-      // Apply the initial filter again if needed, or simply notify
+      _filteredClasses = List.from(_allClasses); 
       notifyListeners();
     } catch (e) {
       print('Error fetching gym classes: $e');
@@ -75,7 +76,6 @@ class ClassProvider with ChangeNotifier {
     }
   }
 
-  // Method to filter classes by date and/or trainer ID and/or name
   void filterClasses({DateTime? date, String? trainerId, String? nameQuery}) {
     List<DetailedGymClass> currentFilteredList = List.from(_allClasses);
 
@@ -103,10 +103,87 @@ class ClassProvider with ChangeNotifier {
     notifyListeners();
   }
 
+ String? validateClassSchedule(GymClass newClass) {
+    // 1. Duration Trap
+    if (newClass.durationMinutes < 30) {
+      return "Class duration is too short. Minimum is 30 minutes.";
+    }
+    if (newClass.durationMinutes > 120) {
+      return "Class duration is too long. Maximum is 120 minutes.";
+    }
+
+    final newStart = newClass.scheduleTime;
+    final newEnd = newStart.add(Duration(minutes: newClass.durationMinutes));
+
+    // 2. Check Operating Hours
+    final startMinutes = newStart.hour * 60 + newStart.minute;
+    final endMinutes = newEnd.hour * 60 + newEnd.minute;
+    final openMinutes = gymOpenTime.hour * 60 + gymOpenTime.minute;
+    final closeMinutes = gymCloseTime.hour * 60 + gymCloseTime.minute;
+
+    if (startMinutes < openMinutes) return "Class starts before opening hours.";
+    if (endMinutes > closeMinutes || newEnd.day != newStart.day) return "Class ends after closing hours.";
+
+    // 3. Check for Conflicts
+    for (var detailedClass in _allClasses) {
+      final existingClass = detailedClass.gymClass;
+      if (existingClass.classId == newClass.classId) continue; // Skip self
+
+      final existingStart = existingClass.scheduleTime;
+      final existingEnd = existingStart.add(Duration(minutes: existingClass.durationMinutes));
+
+      // Overlap Check
+      if (newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart)) {
+        // Trainer Conflict
+        if (newClass.trainerId != null && newClass.trainerId == existingClass.trainerId) {
+          return "Trainer is already booked for '${existingClass.className}' at this time.";
+        }
+        // Room/Space Conflict (Optional: Uncomment to enforce 1 class at a time in the whole gym)
+        // return "Time slot conflicts with '${existingClass.className}'."; 
+      }
+    }
+    return null; // Valid
+  }
+  // Validate a list of classes and return a list of errors (if any)
+  List<String> validateBatchSchedule(List<GymClass> newClasses) {
+    List<String> errors = [];
+    for (var cls in newClasses) {
+      String? error = validateClassSchedule(cls);
+      if (error != null) {
+        errors.add("${cls.scheduleTime.toString().split('.')[0]}: $error");
+      }
+    }
+    return errors;
+  }
+
+  Future<void> addBatchGymClasses(List<GymClass> newClasses) async {
+    final db = await _dbHelper.database;
+    // Use a transaction for safety/speed
+    await db.transaction((txn) async {
+      for (var cls in newClasses) {
+        await txn.insert('CLASS', cls.toJson());
+      }
+    });
+    await fetchGymClasses();
+  }
+// Add this inside ClassProvider class
+Future<void> deleteBatchGymClasses(List<String> classIds) async {
+  final db = await _dbHelper.database;
+  await db.transaction((txn) async {
+    for (var id in classIds) {
+      await txn.delete('CLASS', where: 'class_id = ?', whereArgs: [id]);
+    }
+  });
+  // Update local state
+  _allClasses.removeWhere((c) => classIds.contains(c.gymClass.classId));
+  _filteredClasses.removeWhere((c) => classIds.contains(c.gymClass.classId));
+  notifyListeners();
+}
+
   Future<void> addGymClass(GymClass gymClass) async {
     try {
       await _dbHelper.insertClass(gymClass.toJson());
-      await fetchGymClasses(); // Re-fetch all to update the _allClasses and trigger re-filtering
+      await fetchGymClasses(); 
     } catch (e) {
       print('Error adding gym class: $e');
       rethrow;
@@ -116,7 +193,7 @@ class ClassProvider with ChangeNotifier {
   Future<void> updateGymClass(GymClass gymClass) async {
     try {
       await _dbHelper.updateClass(gymClass.toJson());
-      await fetchGymClasses(); // Re-fetch all to update the _allClasses and trigger re-filtering
+      await fetchGymClasses(); 
     } catch (e) {
       print('Error updating gym class: $e');
       rethrow;
@@ -127,7 +204,7 @@ class ClassProvider with ChangeNotifier {
     try {
       await _dbHelper.deleteClass(classId);
       _allClasses.removeWhere((c) => c.gymClass.classId == classId);
-      _filteredClasses.removeWhere((c) => c.gymClass.classId == classId); // Also remove from current view
+      _filteredClasses.removeWhere((c) => c.gymClass.classId == classId);
       notifyListeners();
     } catch (e) {
       print('Error deleting gym class: $e');
