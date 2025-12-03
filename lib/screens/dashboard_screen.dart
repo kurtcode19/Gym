@@ -16,6 +16,7 @@ import 'package:gym/auth/auth_provider.dart';
 // Import Service and Settings for Backup
 import 'package:gym/services/backup_service.dart';
 import 'package:gym/screens/settings_screen.dart';
+import 'package:gym/screens/about_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -63,6 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 MaterialPageRoute(builder: (context) => const SettingsScreen())
               );
             },
+
           ),
         ),
       );
@@ -377,6 +379,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _buildNavItem(context, icon: Icons.people_alt_rounded, label: "Members", isActive: false, route: "/memberships"),
                   _buildNavItem(context, icon: Icons.receipt_long_rounded, label: "Expenses", isActive: false, route: "/expenses"),
                   _buildNavItem(context, icon: Icons.pie_chart_rounded, label: "Reports", isActive: false, route: "/finance_report"),
+                  _buildNavItem(
+  context,
+  icon: Icons.info_outline,
+  label: "About",
+  isActive: false,
+  route: "/about",
+),
+
                 ],
               ),
             ),
@@ -445,7 +455,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildManagementGrid(BuildContext context) {
     final items = [
-      {"title": "Members", "icon": Icons.people, "route": "/customers", "color": Colors.blue},
+      {"title": "Customers", "icon": Icons.people, "route": "/customers", "color": Colors.blue},
       {"title": "Plans", "icon": Icons.assignment, "route": "/membership_plans", "color": Colors.blue},
       {"title": "Memberships", "icon": Icons.card_membership, "route": "/memberships", "color": Colors.blue},
       
@@ -464,6 +474,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       {"title": "Expenses", "icon": Icons.money_off, "route": "/expenses", "color": Colors.red},
       {"title": "Equipment", "icon": Icons.fitness_center, "route": "/equipment", "color": Colors.grey},
+     
+      {"title": "PT Sessions", "icon": Icons.fitness_center, "route": "/pt_sessions", "color": Colors.purple},
+      {"title": "About", "icon": Icons.info_outline, "route": "/about", "color": Colors.indigo},
+
     ];
 
     return GridView.builder(

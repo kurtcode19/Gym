@@ -12,9 +12,22 @@ class CustomersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Customers'),
-      ),
+appBar: AppBar(
+  title: const Text(
+    "Customers",
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+      color: Colors.black87,
+    ),
+  ),
+  centerTitle: true,
+  backgroundColor: Colors.white,
+  elevation: 4,
+  shadowColor: Colors.black26,
+  surfaceTintColor: Colors.transparent,
+  iconTheme: const IconThemeData(color: Colors.black87),
+),
+
       body: Column(
         children: [
           // Enhanced Search Bar

@@ -20,6 +20,7 @@ import 'package:gym/providers/payment_provider.dart';
 import 'package:gym/providers/expense_provider.dart';
 import 'package:gym/providers/equipment_provider.dart';
 import 'package:gym/providers/trainer_package_provider.dart'; // 1. NEW IMPORT
+import 'package:gym/providers/pt_provider.dart'; // Personal Training provider
 
 // Auth system
 import 'package:gym/auth/auth_service.dart';
@@ -56,6 +57,8 @@ import 'package:gym/screens/equipment_screen.dart';
 import 'package:gym/screens/add_equipment_screen.dart';
 import 'package:gym/screens/dashboard_screen.dart';
 import 'package:gym/screens/trainer_packages_screen.dart'; 
+import 'package:gym/screens/pt_sessions_screen.dart'; // Personal Training sessions screen
+import 'package:gym/screens/about_screen.dart';
 
 // Auth Screens
 import 'package:gym/screens/auth/onboarding_screen.dart';
@@ -83,6 +86,7 @@ class MyApp extends StatelessWidget {
         
         // 2. REGISTER NEW PROVIDER
         ChangeNotifierProvider(create: (_) => TrainerPackageProvider(databaseHelper)), 
+        ChangeNotifierProvider(create: (_) => PTProvider(databaseHelper)), // Personal Training provider
         
         ChangeNotifierProvider(create: (_) => ClassProvider(databaseHelper)),
         ChangeNotifierProvider(create: (_) => ClassBookingProvider(databaseHelper)),
@@ -203,6 +207,8 @@ class MyApp extends StatelessWidget {
           // 3. ENSURE ROUTES ARE REGISTERED
           '/trainer_payout': (context) => const TrainerPayoutScreen(),  
           '/trainer_packages': (context) => const TrainerPackagesScreen(),
+          '/pt_sessions': (context) => const PTSessionsScreen(), // Personal Training sessions screen
+          "/about": (_) => const AboutScreen(),
         },
       ),
     );

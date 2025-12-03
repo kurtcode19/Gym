@@ -55,6 +55,8 @@ dependencies:
   path_provider: ^2.1.2    # To find file paths
   permission_handler: ^11.3.0 # For storage permissions (Android 10+)
   restart_app: ^1.2.1      # To restart app after restore (cleanest way)
+  package_info_plus: ^9.0.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

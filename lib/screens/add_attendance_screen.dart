@@ -133,7 +133,7 @@ class _AddAttendanceScreenState extends State<AddAttendanceScreen> {
                       name: 'amount_paid',
                       decoration: const InputDecoration(
                         labelText: 'Amount',
-                        prefixText: '\$',
+                        prefixText: '\P',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),

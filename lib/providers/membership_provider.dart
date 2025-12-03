@@ -1,10 +1,9 @@
-// lib/providers/membership_provider.dart - UPDATED CONTENT
+// lib/providers/membership_provider.dart
 
 import 'package:flutter/material.dart';
 import 'package:gym/models/membership.dart';
 import 'package:gym/providers/database_helper.dart';
 
-// A simple model to hold joined membership data for display
 class DetailedMembership {
   final Membership membership;
   final String customerFirstName;
@@ -33,9 +32,14 @@ class DetailedMembership {
 
 class MembershipProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
+
   List<DetailedMembership> _memberships = [];
   List<DetailedMembership> _filteredMemberships = [];
   bool _isLoading = false;
+
+  // NEW
+  String currentFilter = "All";
+  String _searchQuery = "";
 
   MembershipProvider(this._dbHelper) {
     fetchMemberships();
@@ -44,150 +48,165 @@ class MembershipProvider with ChangeNotifier {
   List<DetailedMembership> get memberships => _filteredMemberships;
   bool get isLoading => _isLoading;
 
+  // -----------------------------
+  // LOADING
+  // -----------------------------
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
   }
 
+  // -----------------------------
+  // FETCH MEMBERSHIPS
+  // -----------------------------
   Future<void> fetchMemberships() async {
     _setLoading(true);
     try {
       final membershipMaps = await _dbHelper.getDetailedMemberships();
       _memberships = membershipMaps.map((map) => DetailedMembership.fromMap(map)).toList();
-      
-      // NEW: Check and update expired memberships
+
+      // auto-update expired statuses
       await _checkAndUpdateExpiredMemberships();
-      
-      _filteredMemberships = List.from(_memberships);
+
+      _applySearchAndFilter();
     } catch (e) {
-      print('Error fetching detailed memberships: $e');
+      print('Error fetching memberships: $e');
     } finally {
       _setLoading(false);
     }
   }
 
-  // NEW: Check all memberships and update expired ones
+  // -------------------------------------------
+  // AUTO-EXPIRE MEMBERSHIPS PAST END DATE
+  // -------------------------------------------
   Future<void> _checkAndUpdateExpiredMemberships() async {
-    try {
-      final now = DateTime.now();
-      final membershipsToUpdate = <Membership>[];
+    final now = DateTime.now();
+    final toUpdate = <Membership>[];
 
-      // Find memberships that are expired but not marked as such
-      for (final detailedMembership in _memberships) {
-        final membership = detailedMembership.membership;
-        
-        // Only check active/pending memberships that have expired
-        if ((membership.status.toLowerCase() == 'active' || 
-             membership.status.toLowerCase() == 'pending') &&
-            membership.endDate.isBefore(now)) {
-          
-          membershipsToUpdate.add(membership.copyWith(status: 'Expired'));
-        }
-      }
+    for (final dm in _memberships) {
+      final m = dm.membership;
 
-      // Update all expired memberships in database
-      for (final membership in membershipsToUpdate) {
-        await _dbHelper.updateMembership(membership.toJson());
+      if ((m.status.toLowerCase() == 'active' ||
+           m.status.toLowerCase() == 'pending') &&
+          m.endDate.isBefore(now)) {
+        toUpdate.add(m.copyWith(status: "Expired"));
       }
+    }
 
-      // If we updated any, refresh the local list
-      if (membershipsToUpdate.isNotEmpty) {
-        final updatedMaps = await _dbHelper.getDetailedMemberships();
-        _memberships = updatedMaps.map((map) => DetailedMembership.fromMap(map)).toList();
-      }
-    } catch (e) {
-      print('Error updating expired memberships: $e');
+    for (final updated in toUpdate) {
+      await _dbHelper.updateMembership(updated.toJson());
+    }
+
+    if (toUpdate.isNotEmpty) {
+      final membershipMaps = await _dbHelper.getDetailedMemberships();
+      _memberships = membershipMaps.map((map) => DetailedMembership.fromMap(map)).toList();
     }
   }
 
-  // NEW: Method to manually check and update a single membership's expiration
-  Future<void> checkMembershipExpiration(String membershipId) async {
-    try {
-      final detailedMembership = _memberships.firstWhere(
-        (dm) => dm.membership.membershipId == membershipId,
-      );
-      
-      final membership = detailedMembership.membership;
-      if (membership.isExpired && membership.status.toLowerCase() != 'expired') {
-        await setMembershipStatus(membershipId, 'Expired');
-      }
-    } catch (e) {
-      print('Error checking membership expiration: $e');
-    }
-  }
-
-  // NEW: Method to get memberships that will expire soon (optional feature)
-  List<DetailedMembership> getExpiringMemberships({int daysThreshold = 7}) {
-    final thresholdDate = DateTime.now().add(Duration(days: daysThreshold));
-    return _memberships.where((detailedMembership) {
-      final membership = detailedMembership.membership;
-      return membership.status.toLowerCase() == 'active' &&
-             membership.endDate.isBefore(thresholdDate) &&
-             !membership.isExpired;
-    }).toList();
-  }
-
-
+  // -------------------------------------------
+  // PUBLIC CRUD
+  // -------------------------------------------
   Future<void> addMembership(Membership membership) async {
-    try {
-      await _dbHelper.insertMembership(membership.toJson());
-      await fetchMemberships(); // Re-fetch all to get the detailed view
-    } catch (e) {
-      print('Error adding membership: $e');
-    }
+    await _dbHelper.insertMembership(membership.toJson());
+    await fetchMemberships();
   }
 
-  // Existing update method, now with an added status change parameter
   Future<void> updateMembership(Membership membership) async {
-    try {
-      await _dbHelper.updateMembership(membership.toJson());
-      await fetchMemberships(); // Re-fetch all to get the detailed view
-    } catch (e) {
-      print('Error updating membership: $e');
-    }
-  }
-
-  // NEW: Method to specifically update the status of a membership
-  Future<void> setMembershipStatus(String membershipId, String newStatus) async {
-    try {
-      final currentMembership = _memberships.firstWhere(
-        (dm) => dm.membership.membershipId == membershipId,
-        orElse: () => throw Exception('Membership not found with ID: $membershipId'),
-      ).membership;
-
-      if (currentMembership.status != newStatus) {
-        final updatedMembership = currentMembership.copyWith(status: newStatus);
-        await _dbHelper.updateMembership(updatedMembership.toJson());
-        await fetchMemberships(); // Refresh list after update
-      }
-    } catch (e) {
-      print('Error setting membership status: $e');
-    }
+    await _dbHelper.updateMembership(membership.toJson());
+    await fetchMemberships();
   }
 
   Future<void> deleteMembership(String membershipId) async {
+    await _dbHelper.deleteMembership(membershipId);
+    _memberships.removeWhere((dm) => dm.membership.membershipId == membershipId);
+    _applySearchAndFilter();
+  }
+
+  Future<void> setMembershipStatus(String membershipId, String newStatus) async {
     try {
-      await _dbHelper.deleteMembership(membershipId);
-      _memberships.removeWhere((m) => m.membership.membershipId == membershipId);
-      _filteredMemberships.removeWhere((m) => m.membership.membershipId == membershipId);
-      notifyListeners();
+      final dm = _memberships.firstWhere(
+        (dm) => dm.membership.membershipId == membershipId,
+      );
+
+      final updated = dm.membership.copyWith(status: newStatus);
+      await _dbHelper.updateMembership(updated.toJson());
+
+      await fetchMemberships();
     } catch (e) {
-      print('Error deleting membership: $e');
+      print("Status update failed: $e");
     }
   }
 
+  // -------------------------------------------
+  // SEARCH & FILTER ENGINE
+  // -------------------------------------------
   void searchMemberships(String query) {
-    if (query.isEmpty) {
-      _filteredMemberships = List.from(_memberships);
-    } else {
-      _filteredMemberships = _memberships.where((membership) {
-        final lowerCaseQuery = query.toLowerCase();
-        return membership.customerFirstName.toLowerCase().contains(lowerCaseQuery) ||
-               membership.customerLastName.toLowerCase().contains(lowerCaseQuery) ||
-               membership.planName.toLowerCase().contains(lowerCaseQuery) ||
-               membership.membership.status.toLowerCase().contains(lowerCaseQuery);
+    _searchQuery = query.toLowerCase().trim();
+    _applySearchAndFilter();
+  }
+
+  void applyFilter(String filter) {
+    currentFilter = filter;
+    _applySearchAndFilter();
+  }
+
+  void _applySearchAndFilter() {
+    List<DetailedMembership> temp = List.from(_memberships);
+
+    // ---------------- FILTERING ----------------
+    final now = DateTime.now();
+
+    switch (currentFilter) {
+      case "Active":
+        temp = temp.where((dm) => dm.membership.status.toLowerCase() == 'active').toList();
+        break;
+
+      case "Pending":
+        temp = temp.where((dm) => dm.membership.status.toLowerCase() == 'pending').toList();
+        break;
+
+      case "Expired":
+        temp = temp.where((dm) => dm.membership.status.toLowerCase() == 'expired').toList();
+        break;
+
+      case "Cancelled":
+        temp = temp.where((dm) => dm.membership.status.toLowerCase() == 'cancelled').toList();
+        break;
+
+      case "Expiring Soon":
+        final threshold = now.add(const Duration(days: 7));
+        temp = temp.where((dm) {
+          final m = dm.membership;
+          return m.status.toLowerCase() == 'active' &&
+              m.endDate.isBefore(threshold) &&
+              !m.isExpired;
+        }).toList();
+        break;
+
+      case "Expired This Month":
+        temp = temp.where((dm) {
+          final m = dm.membership;
+          return m.status.toLowerCase() == 'expired' &&
+              m.endDate.year == now.year &&
+              m.endDate.month == now.month;
+        }).toList();
+        break;
+
+      default:
+        break; // "All"
+    }
+
+    // ---------------- SEARCH ----------------
+    if (_searchQuery.isNotEmpty) {
+      temp = temp.where((dm) {
+        return dm.customerFirstName.toLowerCase().contains(_searchQuery) ||
+               dm.customerLastName.toLowerCase().contains(_searchQuery) ||
+               dm.planName.toLowerCase().contains(_searchQuery) ||
+               dm.membership.status.toLowerCase().contains(_searchQuery);
       }).toList();
     }
+
+    _filteredMemberships = temp;
     notifyListeners();
   }
 }

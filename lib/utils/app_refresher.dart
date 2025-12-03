@@ -13,6 +13,7 @@ import 'package:gym/providers/product_category_provider.dart';
 import 'package:gym/providers/sale_provider.dart';
 import 'package:gym/providers/expense_provider.dart';
 import 'package:gym/providers/equipment_provider.dart';
+import 'package:gym/providers/trainer_package_provider.dart';
 
 class AppRefresher {
   /// Refreshes all providers in the app to ensure data consistency
@@ -32,6 +33,7 @@ class AppRefresher {
       Provider.of<SaleProvider>(context, listen: false).fetchSales(),
       Provider.of<ExpenseProvider>(context, listen: false).fetchExpenses(),
       Provider.of<EquipmentProvider>(context, listen: false).fetchEquipment(),
+      Provider.of<TrainerPackageProvider>(context, listen: false).fetchPackages(),
     ]);
   }
 }

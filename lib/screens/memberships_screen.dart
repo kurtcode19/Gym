@@ -1,4 +1,5 @@
 // lib/screens/memberships_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gym/providers/membership_provider.dart';
@@ -7,93 +8,204 @@ import 'package:gym/screens/add_payment_screen.dart';
 import 'package:gym/models/membership.dart';
 import 'package:intl/intl.dart';
 
-class MembershipsScreen extends StatelessWidget {
+class MembershipsScreen extends StatefulWidget {
   const MembershipsScreen({super.key});
 
-  Color _getStatusColor(String status) {
+  @override
+  State<MembershipsScreen> createState() => _MembershipsScreenState();
+}
+
+class _MembershipsScreenState extends State<MembershipsScreen> {
+  bool _filtersExpanded = false;
+
+  // STATUS COLOR
+  Color _statusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'active': return Colors.green;
-      case 'expired': return Colors.red;
-      case 'pending': return Colors.orange;
-      case 'cancelled': return Colors.grey;
-      default: return Colors.blueGrey;
+      case "active":
+        return Colors.green;
+      case "expired":
+        return Colors.red;
+      case "pending":
+        return Colors.orange;
+      case "cancelled":
+        return Colors.grey;
+      default:
+        return Colors.blueGrey;
     }
   }
 
-  IconData _getStatusIcon(String status) {
+  // STATUS ICON
+  IconData _statusIcon(String status) {
     switch (status.toLowerCase()) {
-      case 'active': return Icons.check_circle;
-      case 'expired': return Icons.timer_off;
-      case 'pending': return Icons.pending;
-      case 'cancelled': return Icons.cancel;
-      default: return Icons.help;
+      case "active":
+        return Icons.check_circle;
+      case "expired":
+        return Icons.timer_off;
+      case "pending":
+        return Icons.pending;
+      case "cancelled":
+        return Icons.cancel;
+      default:
+        return Icons.help;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<MembershipProvider>(context);
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.grey[100],
+
+      // ----------------------------------------------------------------
+      // ⭐ PREMIUM APP BAR
+      // ----------------------------------------------------------------
       appBar: AppBar(
-        title: const Text('Memberships', style: TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 2,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black26,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        title: const Text(
+          "Memberships",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+            fontSize: 20,
+          ),
+        ),
         centerTitle: true,
-        elevation: 0,
       ),
+
       body: Column(
         children: [
-          // Search Bar
+          // ------------------------------------------------------------
+          // ⭐ PREMIUM SEARCH + FILTER BAR
+          // ------------------------------------------------------------
           Container(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-            ),
-            child: TextField(
-              style: const TextStyle(color: Colors.black87),
-              decoration: InputDecoration(
-                hintText: 'Search by name or plan...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
+              color: Theme.of(context).primaryColor.withOpacity(.08),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(22),
+                bottomRight: Radius.circular(22),
               ),
-              onChanged: (query) {
-                Provider.of<MembershipProvider>(context, listen: false).searchMemberships(query);
-              },
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3))
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // SEARCH BAR
+                    Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: "Search by name or plan...",
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 0),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: provider.searchMemberships,
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // FILTER TOGGLE BUTTON
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _filtersExpanded = !_filtersExpanded);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(.08),
+                                blurRadius: 6)
+                          ],
+                        ),
+                        child: Icon(
+                          _filtersExpanded
+                              ? Icons.filter_list_off
+                              : Icons.filter_list,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // -------------------------------------------------------
+                // EXPANDED FILTER OPTIONS
+                // -------------------------------------------------------
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  height: _filtersExpanded ? 60 : 0,
+                  margin: const EdgeInsets.only(top: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child:
+                      _filtersExpanded ? _buildFilterOptions(provider) : null,
+                ),
+              ],
             ),
           ),
-          
-          // Summary Row
+
+          const SizedBox(height: 8),
+
+          // ------------------------------------------------------------
+          // SUMMARY ROW
+          // ------------------------------------------------------------
           Consumer<MembershipProvider>(
-            builder: (context, membershipProvider, child) {
-              if (membershipProvider.memberships.isNotEmpty) {
-                final activeCount = membershipProvider.memberships
-                    .where((m) => m.membership.status.toLowerCase() == 'active')
+            builder: (_, prov, __) {
+              if (prov.memberships.isNotEmpty) {
+                final active = prov.memberships
+                    .where((m) =>
+                        m.membership.status.toLowerCase() == "active")
                     .length;
-                
+
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${membershipProvider.memberships.length} Total Memberships',
-                        style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
+                        "${prov.memberships.length} Total Memberships",
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      if (activeCount > 0)
+                      if (active > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.green.withOpacity(.12),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            '$activeCount Active',
-                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
+                            "$active Active",
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                     ],
@@ -104,243 +216,297 @@ class MembershipsScreen extends StatelessWidget {
             },
           ),
 
-          // Membership List
+          // ------------------------------------------------------------
+          // MEMBERSHIP LIST
+          // ------------------------------------------------------------
           Expanded(
-            child: Consumer<MembershipProvider>(
-              builder: (context, membershipProvider, child) {
-                if (membershipProvider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (membershipProvider.memberships.isEmpty) {
-                  return _buildEmptyState(context);
-                } else {
-                  return _buildMembershipList(membershipProvider, context);
-                }
-              },
-            ),
+            child: provider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : provider.memberships.isEmpty
+                    ? _emptyState()
+                    : _membershipList(provider),
           ),
         ],
       ),
+
+      // ----------------------------------------------------------------
+      // FAB
+      // ----------------------------------------------------------------
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddMembershipScreen(),
-            ),
-          );
-        },
+        backgroundColor: Theme.of(context).primaryColor,
         label: const Text("New Membership"),
         icon: const Icon(Icons.add),
-        backgroundColor: Theme.of(context).primaryColor,
+        onPressed: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const AddMembershipScreen()));
+        },
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  // ----------------------------------------------------------------------
+  // FILTER BAR
+  // ----------------------------------------------------------------------
+
+  Widget _buildFilterOptions(MembershipProvider provider) {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      children: [
+        _chip("All", provider),
+        _chip("Active", provider),
+        _chip("Pending", provider),
+        _chip("Expired", provider),
+        _chip("Cancelled", provider),
+        _chip("Expiring Soon", provider),
+        _chip("Expired This Month", provider),
+      ],
+    );
+  }
+
+  Widget _chip(String label, MembershipProvider provider) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label,
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+        selected: provider.currentFilter == label,
+        selectedColor: Colors.blue.shade200,
+        onSelected: (_) => provider.applyFilter(label),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------------
+  // EMPTY STATE
+  // ----------------------------------------------------------------------
+
+  Widget _emptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.card_membership, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text('No memberships found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          Text("No memberships found",
+              style: TextStyle(fontSize: 16, color: Colors.grey[600])),
         ],
       ),
     );
   }
 
-  Widget _buildMembershipList(MembershipProvider membershipProvider, BuildContext context) {
+  // ----------------------------------------------------------------------
+  // MEMBERSHIP LIST
+  // ----------------------------------------------------------------------
+
+  Widget _membershipList(MembershipProvider provider) {
     return ListView.separated(
-      itemCount: membershipProvider.memberships.length,
       padding: const EdgeInsets.all(16),
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemCount: provider.memberships.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final detailedMembership = membershipProvider.memberships[index];
-        return _buildMembershipCard(detailedMembership, membershipProvider, context);
+        final detailed = provider.memberships[index];
+        return _membershipCard(context, provider, detailed);
       },
     );
   }
 
-  Widget _buildMembershipCard(DetailedMembership detailedMembership, MembershipProvider membershipProvider, BuildContext context) {
-    final membership = detailedMembership.membership;
-    final statusColor = _getStatusColor(membership.status);
-    final isExpired = membership.status.toLowerCase() == 'expired' || membership.status.toLowerCase() == 'cancelled';
-    
+  // ----------------------------------------------------------------------
+  // PREMIUM CARD STYLE
+  // ----------------------------------------------------------------------
+
+  Widget _membershipCard(BuildContext ctx,
+      MembershipProvider provider, DetailedMembership d) {
+    final m = d.membership;
+    final color = _statusColor(m.status);
+    final expired =
+        m.status.toLowerCase() == "expired" ||
+            m.status.toLowerCase() == "cancelled";
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black.withOpacity(.07),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+
         leading: Container(
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            color: color.withOpacity(.15),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(_getStatusIcon(membership.status), color: statusColor, size: 24),
+          child: Icon(_statusIcon(m.status), color: color, size: 26),
         ),
+
         title: Text(
-          '${detailedMembership.customerFirstName} ${detailedMembership.customerLastName}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          "${d.customerFirstName} ${d.customerLastName}",
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.fitness_center, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(detailedMembership.planName, style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w500)),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.fitness_center,
+                      size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(d.planName,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      m.status,
+                      style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10),
+                    ),
                   ),
-                  child: Text(
-                    membership.status,
-                    style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${DateFormat('MMM d, yyyy').format(membership.startDate)} - ${DateFormat('MMM d, yyyy').format(membership.endDate)}',
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "${DateFormat('MMM d, yyyy').format(m.startDate)} - "
+                "${DateFormat('MMM d, yyyy').format(m.endDate)}",
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
         ),
+
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.grey),
           onSelected: (value) {
-            if (value == 'renew') {
-              // Renew Logic: Open Edit screen but potentially treat as "Renew"
-              // For simplicity, we open AddMembershipScreen with existing data 
-              // but you might want to clear dates to default to "Now"
+            if (value == "renew") {
               Navigator.push(
-                context,
+                ctx,
                 MaterialPageRoute(
-                  builder: (context) => AddMembershipScreen(
-                    membership: membership,
-                    isRenewal: true, // NEW FLAG to handle renewal logic
-                  ),
+                  builder: (_) =>
+                      AddMembershipScreen(membership: m, isRenewal: true),
                 ),
               );
-            } else if (value == 'payment') {
+            } else if (value == "payment") {
               Navigator.push(
-                context,
+                ctx,
                 MaterialPageRoute(
-                  builder: (context) => AddPaymentScreen(
-                    preSelectedMembershipId: membership.membershipId,
-                  ),
+                  builder: (_) =>
+                      AddPaymentScreen(preSelectedMembershipId: m.membershipId),
                 ),
               );
-            } else if (value == 'edit') {
+            } else if (value == "edit") {
               Navigator.push(
-                context,
+                ctx,
                 MaterialPageRoute(
-                  builder: (context) => AddMembershipScreen(membership: membership),
+                  builder: (_) => AddMembershipScreen(membership: m),
                 ),
               );
-            } else if (value == 'delete') {
-              _confirmDelete(context, membershipProvider, membership);
+            } else if (value == "delete") {
+              _confirmDelete(ctx, provider, m);
             }
           },
-          itemBuilder: (BuildContext context) => [
-            // RENEW BUTTON (Only if expired/cancelled)
-            if (isExpired)
-              const PopupMenuItem<String>(
-                value: 'renew',
+          itemBuilder: (_) => [
+            if (expired)
+              const PopupMenuItem(
+                value: "renew",
                 child: Row(
                   children: [
-                    Icon(Icons.autorenew, color: Colors.green, size: 20),
-                    SizedBox(width: 12),
-                    Text('Renew Membership'),
+                    Icon(Icons.autorenew, color: Colors.green),
+                    SizedBox(width: 10),
+                    Text("Renew"),
                   ],
                 ),
               ),
-            
-            if (!isExpired) // Only show Make Payment if active/pending
-              const PopupMenuItem<String>(
-                value: 'payment',
+            if (!expired)
+              const PopupMenuItem(
+                value: "payment",
                 child: Row(
                   children: [
-                    Icon(Icons.payment, color: Colors.blue, size: 20),
-                    SizedBox(width: 12),
-                    Text('Make Payment'),
+                    Icon(Icons.payment, color: Colors.blue),
+                    SizedBox(width: 10),
+                    Text("Make Payment"),
                   ],
                 ),
               ),
-            const PopupMenuItem<String>(
-              value: 'edit',
+            const PopupMenuItem(
+              value: "edit",
               child: Row(
                 children: [
-                  Icon(Icons.edit, color: Colors.grey, size: 20),
-                  SizedBox(width: 12),
-                  Text('Edit Details'),
+                  Icon(Icons.edit, color: Colors.black87),
+                  SizedBox(width: 10),
+                  Text("Edit"),
                 ],
               ),
             ),
-            const PopupMenuItem<String>(
-              value: 'delete',
+            const PopupMenuItem(
+              value: "delete",
               child: Row(
                 children: [
-                  Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                  SizedBox(width: 12),
-                  Text('Delete'),
+                  Icon(Icons.delete, color: Colors.red),
+                  SizedBox(width: 10),
+                  Text("Delete"),
                 ],
               ),
             ),
           ],
         ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddMembershipScreen(membership: membership),
-            ),
-          );
-        },
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, MembershipProvider membershipProvider, Membership membership) {
+  // ----------------------------------------------------------------------
+  // DELETE CONFIRMATION
+  // ----------------------------------------------------------------------
+
+  void _confirmDelete(
+      BuildContext context, MembershipProvider provider, Membership m) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Membership?'),
-          content: const Text('Are you sure you want to delete this membership record?'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Delete', style: TextStyle(color: Colors.white)),
-              onPressed: () {
-                membershipProvider.deleteMembership(membership.membershipId);
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Membership deleted successfully.')),
-                );
-              },
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Membership?"),
+        content:
+            const Text("Are you sure you want to delete this membership?"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child:
+                const Text("Delete", style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              provider.deleteMembership(m.membershipId);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Membership deleted")),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
