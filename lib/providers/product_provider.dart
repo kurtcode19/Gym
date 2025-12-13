@@ -20,6 +20,8 @@ class DetailedProduct {
       categoryName: map['category_name'],
     );
   }
+
+  get productName => null;
 }
 
 class ProductProvider with ChangeNotifier {

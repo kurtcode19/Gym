@@ -1,16 +1,19 @@
 // lib/screens/add_class_booking_screen.dart
+// FINAL VERSION – FIXED VALIDATION + CAPACITY + DATE INDICATORS (OPTION B)
+
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
+
 import 'package:gym/models/class_booking.dart';
-import 'package:gym/models/class.dart';
 import 'package:gym/models/customer.dart';
 import 'package:gym/providers/class_booking_provider.dart';
 import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/class_provider.dart';
 import 'package:gym/providers/trainer_provider.dart';
 import 'package:gym/providers/membership_provider.dart';
-import 'package:gym/providers/trainer_package_provider.dart'; // NEW IMPORT
+import 'package:gym/providers/trainer_package_provider.dart';
+
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -25,399 +28,589 @@ class AddClassBookingScreen extends StatefulWidget {
 
 class _AddClassBookingScreenState extends State<AddClassBookingScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
+
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedClassDate;
+  DateTime? _selectedDate;
+
+  String? _selectedClassId;
   String? _selectedTrainerId;
-  String? _selectedClassIdForBooking;
+
   Map<String, dynamic> _initialValues = {};
+
+  static const int MAX_CAPACITY = 10;
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    _initialize();
   }
 
-  void _initializeData() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    
-    if (mounted) {
-      final classProvider = Provider.of<ClassProvider>(context, listen: false);
-      Provider.of<MembershipProvider>(context, listen: false).fetchMemberships(); 
-      // Also fetch packages to ensure up-to-date status
-      Provider.of<TrainerPackageProvider>(context, listen: false).fetchPackages();
+  Future<void> _initialize() async {
+    await Future.delayed(const Duration(milliseconds: 150));
 
-      if (widget.booking != null) {
-        GymClass? currentClass;
-        try {
-           final detailedClass = classProvider.classes.firstWhere((dc) => dc.gymClass.classId == widget.booking!.classId);
-           currentClass = detailedClass.gymClass;
-        } catch(e) {
-           // Handle class not found
-        }
-
-        if (currentClass != null) {
-          setState(() {
-            _selectedClassDate = currentClass!.scheduleTime;
-            _focusedDay = currentClass!.scheduleTime;
-            _selectedTrainerId = currentClass!.trainerId;
-            _selectedClassIdForBooking = currentClass!.classId;
-          });
-          classProvider.filterClasses(date: _selectedClassDate, trainerId: _selectedTrainerId);
-        }
-
-        _initialValues = {
-          'customer_id': widget.booking!.customerId,
-          'booking_date': widget.booking!.bookingDate,
-          'status': widget.booking!.status,
-          'class_id': _selectedClassIdForBooking,
-        };
-      } else {
-        _selectedClassDate = DateTime.now();
-        classProvider.filterClasses(date: _selectedClassDate);
-        _initialValues = {
-          'booking_date': DateTime.now(),
-          'status': 'Confirmed',
-        };
-      }
-      if (mounted) setState(() {});
-    }
-  }
-
-  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    final normalizedSelectedDay = DateTime.utc(selectedDay.year, selectedDay.month, selectedDay.day);
-
-    if (!isSameDay(_selectedClassDate, normalizedSelectedDay)) {
-      setState(() {
-        _selectedClassDate = normalizedSelectedDay;
-        _focusedDay = focusedDay;
-        _selectedClassIdForBooking = null; 
-      });
-      _applyFilter();
-      _formKey.currentState?.fields['class_id']?.didChange(null);
-    }
-  }
-
-  void _applyFilter() {
     final classProvider = Provider.of<ClassProvider>(context, listen: false);
-    classProvider.filterClasses(date: _selectedClassDate, trainerId: _selectedTrainerId);
-    
-    if (_selectedClassIdForBooking != null &&
-        !classProvider.classes.any((dc) => dc.gymClass.classId == _selectedClassIdForBooking)) {
-      setState(() => _selectedClassIdForBooking = null);
-      _formKey.currentState?.fields['class_id']?.didChange(null);
+
+    Provider.of<MembershipProvider>(context, listen: false).fetchMemberships();
+    Provider.of<TrainerPackageProvider>(context, listen: false).fetchPackages();
+
+    if (widget.booking != null) {
+      try {
+        final detailed = classProvider.classes
+            .firstWhere((dc) => dc.gymClass.classId == widget.booking!.classId);
+
+        final dt = detailed.gymClass.scheduleTime;
+
+        _selectedDate = DateTime(dt.year, dt.month, dt.day);
+        _selectedClassId = detailed.gymClass.classId;
+        _selectedTrainerId = detailed.gymClass.trainerId;
+        _focusedDay = _selectedDate!;
+      } catch (_) {}
+
+      _initialValues = {
+        "customer_id": widget.booking!.customerId,
+        "booking_date": widget.booking!.bookingDate,
+        "status": widget.booking!.status,
+      };
+
+      classProvider.filterClasses(
+        date: _selectedDate,
+        trainerId: _selectedTrainerId,
+      );
+    } else {
+      _selectedDate = DateTime.now();
+      classProvider.filterClasses(date: _selectedDate);
+
+      _initialValues = {
+        "booking_date": DateTime.now(),
+        "status": "Confirmed",
+      };
     }
+
+    if (mounted) setState(() {});
   }
 
-  List<Customer> _getActiveCustomers(BuildContext context) {
-    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
-    final membershipProvider = Provider.of<MembershipProvider>(context, listen: false);
+  // -----------------------------------------------
+  // Premium UI Components
+  // -----------------------------------------------
+  Widget _premiumCard(Widget child) {
+    return Card(
+      elevation: 2.5,
+      shadowColor: Colors.black.withOpacity(.05),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: child,
+      ),
+    );
+  }
 
-    final activeMemberIds = membershipProvider.memberships
-        .where((m) => m.membership.status.toLowerCase() == 'active')
+  InputDecoration _premiumField(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: Colors.white,
+      prefixIcon: Icon(icon, color: Colors.grey[700]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, bottom: 8),
+      child: Row(
+        children: [
+          Container(width: 4, height: 18, color: Colors.blueAccent),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -----------------------------------------------
+  // Active Members Only
+  // -----------------------------------------------
+  List<Customer> _activeMembers(BuildContext context) {
+    final customers =
+        Provider.of<CustomerProvider>(context, listen: false).customers;
+    final memberships =
+        Provider.of<MembershipProvider>(context, listen: false).memberships;
+
+    final activeIds = memberships
+        .where((m) => m.membership.status.toLowerCase() == "active")
         .map((m) => m.membership.customerId)
         .toSet();
 
-    final activeCustomers = customerProvider.customers
-        .where((c) => activeMemberIds.contains(c.customerId))
-        .toList();
+    final list =
+        customers.where((c) => activeIds.contains(c.customerId)).toList();
 
-    if (widget.booking != null) {
-      final currentId = widget.booking!.customerId;
-      final isInList = activeCustomers.any((c) => c.customerId == currentId);
-      if (!isInList) {
-        try {
-          final currentCustomer = customerProvider.customers.firstWhere((c) => c.customerId == currentId);
-          activeCustomers.add(currentCustomer);
-        } catch (e) {}
-      }
+    if (widget.booking != null &&
+        !list.any((c) => c.customerId == widget.booking!.customerId)) {
+      list.add(customers
+          .firstWhere((c) => c.customerId == widget.booking!.customerId));
     }
-    
-    return activeCustomers;
+
+    return list;
   }
 
+  // -----------------------------------------------
+  // Build Screen
+  // -----------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final customerProvider = Provider.of<CustomerProvider>(context);
     final classProvider = Provider.of<ClassProvider>(context);
     final trainerProvider = Provider.of<TrainerProvider>(context);
-    final membershipProvider = Provider.of<MembershipProvider>(context);
+    final bookingProvider = Provider.of<ClassBookingProvider>(context);
 
-    final activeCustomers = _getActiveCustomers(context);
+    final customers = _activeMembers(context);
+
+    // Class days (based on your provider)
+    final classDays = classProvider.allClassDates.toList();
+
+    // Capacity map
+    final Map<DateTime, int> capacityMap = {};
+    for (var b in bookingProvider.allBookings) {
+      final d = b.classScheduleTime;
+      final day = DateTime(d.year, d.month, d.day);
+      capacityMap[day] = (capacityMap[day] ?? 0) + 1;
+    }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
-        title: Text(widget.booking != null ? 'Edit Booking' : 'New Booking'),
+        backgroundColor: Colors.white,
+        elevation: 4,
         centerTitle: true,
-        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(
+          widget.booking == null ? "New Class Booking" : "Edit Booking",
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+        ),
       ),
+
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: FormBuilder(
           key: _formKey,
           initialValue: _initialValues,
-          enabled: !customerProvider.isLoading && !classProvider.isLoading && !membershipProvider.isLoading,
           child: ListView(
             children: [
-              // Customer Selection
-              FormBuilderDropdown<String>(
-                name: 'customer_id',
-                decoration: InputDecoration(
-                  labelText: 'Select Active Member',
-                  prefixIcon: const Icon(Icons.person),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  filled: true,
-                  fillColor: Colors.white,
-                  helperText: 'Only showing customers with active memberships',
-                ),
-                validator: (value) => value == null ? 'Required' : null,
-                items: activeCustomers.isEmpty 
-                  ? [const DropdownMenuItem(value: null, enabled: false, child: Text('No active members found'))]
-                  : activeCustomers.map((c) => DropdownMenuItem(
-                      value: c.customerId, 
-                      child: Text('${c.firstName} ${c.lastName}')
-                    )).toList(),
-              ),
+              _sectionTitle("Select Member"),
+              _memberDropdown(customers),
+
               const SizedBox(height: 24),
 
-              // Calendar Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Select Date", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-                  Row(
-                    children: [
-                      Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle)),
-                      const SizedBox(width: 4),
-                      Text("Has Class", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    ],
-                  )
-                ],
-              ),
-              const SizedBox(height: 8),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
-                child: TableCalendar(
-                  focusedDay: _focusedDay,
-                  firstDay: DateTime.utc(2020, 1, 1),
-                  lastDay: DateTime.utc(2030, 12, 31),
-                  calendarFormat: CalendarFormat.month,
-                  availableCalendarFormats: const {CalendarFormat.week: 'Week', CalendarFormat.month: 'Month'},
-                  selectedDayPredicate: (day) => isSameDay(_selectedClassDate, day),
-                  onDaySelected: _onDaySelected,
-                  onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-                  eventLoader: (day) {
-                    final normalizedDay = DateTime.utc(day.year, day.month, day.day);
-                    return classProvider.classDates.contains(normalizedDay) ? [true] : [];
-                  },
-                  calendarStyle: CalendarStyle(
-                    selectedDecoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
-                    todayDecoration: BoxDecoration(color: Colors.blue.withOpacity(0.3), shape: BoxShape.circle),
-                    markerDecoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-                    markersMaxCount: 1,
-                  ),
-                  headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
-                ),
-              ),
-              
-              const SizedBox(height: 16),
+              _sectionTitle("Choose Date"),
+              _calendarCard(classDays, capacityMap),
 
-              FormBuilderDropdown<String>(
-                name: 'trainer_id_filter',
-                decoration: InputDecoration(
-                  labelText: 'Filter by Trainer',
-                  prefixIcon: const Icon(Icons.filter_alt),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('All Trainers')),
-                  ...trainerProvider.trainers.map((t) => DropdownMenuItem(value: t.trainerId, child: Text('${t.firstName} ${t.lastName}'))),
-                ],
-                onChanged: (val) {
-                  setState(() {
-                    _selectedTrainerId = val;
-                    _selectedClassIdForBooking = null;
-                  });
-                  _applyFilter();
-                  _formKey.currentState?.fields['class_id']?.didChange(null);
+              const SizedBox(height: 24),
+
+              _sectionTitle("Filter by Trainer"),
+              _trainerFilter(trainerProvider),
+
+              const SizedBox(height: 24),
+
+              _sectionTitle("Available Classes"),
+              _availableClassesList(classProvider),
+
+              // ⭐ Hidden class_id field with visible validation error
+              FormBuilderField<String>(
+                name: "class_id",
+                validator: (v) => v == null ? "Please select a class" : null,
+                builder: (state) {
+                  return state.hasError
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            state.errorText ?? '',
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        )
+                      : const SizedBox.shrink();
                 },
               ),
 
               const SizedBox(height: 24),
 
-              Text("Available Classes", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-              const SizedBox(height: 8),
-              
-              classProvider.isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : classProvider.classes.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                      child: const Center(child: Text("No classes available for this selection", style: TextStyle(color: Colors.grey))),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: classProvider.classes.length,
-                      itemBuilder: (context, index) {
-                        final detailedClass = classProvider.classes[index];
-                        final isSelected = _selectedClassIdForBooking == detailedClass.gymClass.classId;
-                        
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() => _selectedClassIdForBooking = detailedClass.gymClass.classId);
-                            _formKey.currentState?.fields['class_id']?.didChange(detailedClass.gymClass.classId);
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: isSelected ? Colors.blue.shade50 : Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected ? Colors.blue : Colors.transparent, 
-                                width: 2
-                              ),
-                              boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))],
-                            ),
-                            child: Row(
-                              children: [
-                                Column(
-                                  children: [
-                                    Text(DateFormat('h:mm').format(detailedClass.gymClass.scheduleTime), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isSelected ? Colors.blue : Colors.black87)),
-                                    Text(DateFormat('a').format(detailedClass.gymClass.scheduleTime), style: TextStyle(fontSize: 12, color: isSelected ? Colors.blue : Colors.grey)),
-                                  ],
-                                ),
-                                const SizedBox(width: 16),
-                                Container(width: 1, height: 40, color: Colors.grey.shade200),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(detailedClass.gymClass.className, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                      const SizedBox(height: 4),
-                                      Text("Trainer: ${detailedClass.trainerFullName}", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                                    ],
-                                  ),
-                                ),
-                                if (isSelected) const Icon(Icons.check_circle, color: Colors.blue),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              _sectionTitle("Booking Details"),
+              _detailsCard(),
 
-              FormBuilderField<String>(
-                name: 'class_id',
-                validator: (val) => val == null ? 'Select a class' : null,
-                builder: (field) => field.hasError 
-                  ? Padding(padding: const EdgeInsets.only(top: 5), child: Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12))) 
-                  : const SizedBox.shrink(),
+              const SizedBox(height: 30),
+
+              _submitButton(context),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // -----------------------------------------------
+  // UI Components
+  // -----------------------------------------------
+
+  Widget _memberDropdown(List<Customer> customers) {
+    return _premiumCard(
+      FormBuilderDropdown<String>(
+        name: "customer_id",
+        decoration: _premiumField("Active Members", Icons.person),
+        validator: (v) => v == null ? "Required" : null,
+        items: customers
+            .map(
+              (c) => DropdownMenuItem(
+                value: c.customerId,
+                child: Text("${c.firstName} ${c.lastName}"),
               ),
+            )
+            .toList(),
+      ),
+    );
+  }
 
-              const SizedBox(height: 24),
+  Widget _calendarCard(List<DateTime> classDays, Map<DateTime, int> capacityMap) {
+    return _premiumCard(
+      Column(
+        children: [
+          TableCalendar(
+            focusedDay: _focusedDay,
+            firstDay: DateTime.utc(2020),
+            lastDay: DateTime.utc(2030),
+            calendarFormat: CalendarFormat.month,
+            availableCalendarFormats: const {CalendarFormat.month: "Month"},
+            headerStyle: const HeaderStyle(
+              titleCentered: true,
+              formatButtonVisible: false,
+            ),
 
-              Text("Booking Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-              const SizedBox(height: 8),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      FormBuilderDateTimePicker(
-                        name: 'booking_date',
-                        decoration: const InputDecoration(labelText: 'Booking Created On', prefixIcon: Icon(Icons.today), border: InputBorder.none),
-                        inputType: InputType.date,
+            selectedDayPredicate: (day) => isSameDay(day, _selectedDate),
+            onDaySelected: (selected, focused) {
+              setState(() {
+                _selectedDate = DateTime(selected.year, selected.month, selected.day);
+                _focusedDay = focused;
+                _selectedClassId = null;
+              });
+
+              Provider.of<ClassProvider>(context, listen: false)
+                  .filterClasses(date: _selectedDate);
+
+              _formKey.currentState?.fields["class_id"]?.didChange(null);
+            },
+
+            calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, day, _) {
+                final d = DateTime(day.year, day.month, day.day);
+
+                final hasClass = classDays.contains(d);
+                final count = capacityMap[d] ?? 0;
+
+                Color bg = Colors.transparent;
+                Color txt = Colors.black;
+
+                if (hasClass) {
+                  if (count >= MAX_CAPACITY) {
+                    bg = Colors.red.withOpacity(.35);
+                    txt = Colors.red.shade900;
+                  } else if (count >= 6) {
+                    bg = Colors.orange.withOpacity(.35);
+                    txt = Colors.deepOrange.shade900;
+                  } else {
+                    bg = Colors.green.withOpacity(.35);
+                    txt = Colors.green.shade900;
+                  }
+                }
+
+                return Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                  child: Text(
+                    "${day.day}",
+                    style: TextStyle(
+                      color: txt,
+                      fontWeight: hasClass ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 10),
+          _legendRow(),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _legendDot(Colors.green.shade700, "Available"),
+        const SizedBox(width: 16),
+        _legendDot(Colors.orange.shade800, "Few Spots"),
+        const SizedBox(width: 16),
+        _legendDot(Colors.red.shade700, "Full"),
+      ],
+    );
+  }
+
+  Widget _legendDot(Color color, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(text, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _trainerFilter(TrainerProvider trainerProvider) {
+    return _premiumCard(
+      FormBuilderDropdown<String?>(
+        name: "trainer_filter",
+        decoration: _premiumField("Trainer (optional)", Icons.filter_alt),
+        items: [
+          const DropdownMenuItem(value: null, child: Text("All")),
+          ...trainerProvider.trainers.map(
+            (t) => DropdownMenuItem(
+              value: t.trainerId,
+              child: Text("${t.firstName} ${t.lastName}"),
+            ),
+          ),
+        ],
+        onChanged: (val) {
+          _selectedTrainerId = val;
+          _selectedClassId = null;
+
+          Provider.of<ClassProvider>(context, listen: false)
+              .filterClasses(date: _selectedDate, trainerId: val);
+
+          _formKey.currentState?.fields["class_id"]?.didChange(null);
+        },
+      ),
+    );
+  }
+
+  Widget _availableClassesList(ClassProvider classProvider) {
+    if (classProvider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (classProvider.classes.isEmpty) {
+      return _premiumCard(
+        const Padding(
+          padding: EdgeInsets.all(10),
+          child: Center(
+            child: Text("No classes available", style: TextStyle(color: Colors.grey)),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: classProvider.classes.map((dc) {
+        final g = dc.gymClass;
+        final selected = _selectedClassId == g.classId;
+
+        return GestureDetector(
+          onTap: () {
+            setState(() => _selectedClassId = g.classId);
+            _formKey.currentState?.fields["class_id"]?.didChange(g.classId);
+          },
+          child: _premiumCard(
+            Row(
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      DateFormat("h:mm").format(g.scheduleTime),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: selected ? Colors.blueAccent : Colors.black,
                       ),
-                      const Divider(),
-                      FormBuilderDropdown<String>(
-                        name: 'status',
-                        decoration: const InputDecoration(labelText: 'Status', prefixIcon: Icon(Icons.flag), border: InputBorder.none),
-                        items: ['Confirmed', 'Cancelled', 'Attended', 'No Show']
-                            .map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    ),
+                    Text(
+                      DateFormat("a").format(g.scheduleTime),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: selected ? Colors.blueAccent : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(width: 16),
+                Container(width: 1, height: 40, color: Colors.grey.shade300),
+                const SizedBox(width: 16),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(g.className, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Trainer: ${dc.trainerFullName}",
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 32),
+                if (selected)
+                  const Icon(Icons.check_circle, color: Colors.blueAccent),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    // 1. Trigger validation for hidden field
-                    _formKey.currentState?.fields['class_id']?.validate();
-                    
-                    if (_formKey.currentState?.saveAndValidate() ?? false) {
-                      final data = _formKey.currentState!.value;
-                      
-                      // 2. Get Providers
-                      final bookingProvider = Provider.of<ClassBookingProvider>(context, listen: false);
-                      final classProvider = Provider.of<ClassProvider>(context, listen: false);
-                      // NEW: Get Package Provider
-                      final packageProvider = Provider.of<TrainerPackageProvider>(context, listen: false);
-                      
-                      // 3. Validate Double Booking
-                      final targetClass = classProvider.classes.firstWhere((c) => c.gymClass.classId == data['class_id']).gymClass;
-                      final error = bookingProvider.validateBooking(
-                        data['customer_id'], 
-                        targetClass, 
-                        excludeBookingId: widget.booking?.bookingId
-                      );
-
-                      if (error != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
-                        return;
-                      }
-
-                      final newBooking = ClassBooking(
-                        bookingId: widget.booking?.bookingId,
-                        customerId: data['customer_id'],
-                        classId: data['class_id'],
-                        bookingDate: data['booking_date'],
-                        status: data['status'],
-                      );
-
-                      try {
-                        // 4. Execute Add/Update with Package Logic
-                        if (widget.booking != null) {
-                          await bookingProvider.updateClassBooking(newBooking);
-                        } else {
-                          // PASS packageProvider to handle deduction logic
-                          await bookingProvider.addClassBooking(newBooking, packageProvider);
-                        }
-                        
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking saved!')));
-                          Navigator.pop(context);
-                        }
-                      } catch (e) {
-                        // This catches "User has no sessions left" errors
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(widget.booking != null ? 'Update Booking' : 'Confirm Booking', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ),
+  Widget _detailsCard() {
+    return _premiumCard(
+      Column(
+        children: [
+          FormBuilderDateTimePicker(
+            name: "booking_date",
+            decoration: _premiumField("Booking Created On", Icons.today),
+            inputType: InputType.date,
+          ),
+          const SizedBox(height: 16),
+          FormBuilderDropdown<String>(
+            name: "status",
+            decoration: _premiumField("Status", Icons.flag),
+            items: const [
+              DropdownMenuItem(value: "Confirmed", child: Text("Confirmed")),
+              DropdownMenuItem(value: "Cancelled", child: Text("Cancelled")),
+              DropdownMenuItem(value: "Attended", child: Text("Attended")),
+              DropdownMenuItem(value: "No Show", child: Text("No Show")),
             ],
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _submitButton(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () => _save(context),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blueAccent,
+        minimumSize: const Size.fromHeight(55),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: Text(
+        widget.booking == null ? "Confirm Booking" : "Save Changes",
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+    );
+  }
+
+  // -----------------------------------------------
+  // SAVE LOGIC + FULL ERROR CHECKING
+  // -----------------------------------------------
+  Future<void> _save(BuildContext context) async {
+    _formKey.currentState?.fields["class_id"]?.validate();
+
+    if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
+      _showSnack("Please correct the highlighted fields.", true);
+      return;
+    }
+
+    final data = _formKey.currentState!.value;
+
+    final customerId = data["customer_id"];
+    final classId = data["class_id"];
+    final bookingDate = data["booking_date"];
+    final status = data["status"];
+
+    if (customerId == null || classId == null) {
+      _showSnack("Incomplete booking information.", true);
+      return;
+    }
+
+    final classProvider = Provider.of<ClassProvider>(context, listen: false);
+    final bookingProvider = Provider.of<ClassBookingProvider>(context, listen: false);
+
+    final match =
+        classProvider.classes.where((c) => c.gymClass.classId == classId);
+
+    if (match.isEmpty) {
+      _showSnack("Class no longer exists.", true);
+      return;
+    }
+
+    final selectedClass = match.first.gymClass;
+
+    if (selectedClass.scheduleTime.isBefore(DateTime.now())) {
+      _showSnack("Cannot book past classes.", true);
+      return;
+    }
+
+    final count = bookingProvider
+        .getBookingsForDay(selectedClass.scheduleTime)
+        .length;
+
+    if (count >= MAX_CAPACITY) {
+      _showSnack("This class is fully booked.", true);
+      return;
+    }
+
+    final conflict = bookingProvider.validateBooking(
+      customerId,
+      selectedClass,
+      excludeBookingId: widget.booking?.bookingId,
+    );
+
+    if (conflict != null) {
+      _showSnack(conflict, true);
+      return;
+    }
+
+    final newBooking = ClassBooking(
+      bookingId: widget.booking?.bookingId,
+      customerId: customerId,
+      classId: classId,
+      bookingDate: bookingDate,
+      status: status,
+    );
+
+    try {
+      final pkgProvider =
+          Provider.of<TrainerPackageProvider>(context, listen: false);
+
+      if (widget.booking == null) {
+        await bookingProvider.addClassBooking(newBooking, pkgProvider);
+      } else {
+        await bookingProvider.updateClassBooking(newBooking);
+      }
+
+      if (!mounted) return;
+
+      _showSnack("Booking saved!", false);
+      Navigator.pop(context);
+    } catch (e) {
+      _showSnack("Error: $e", true);
+    }
+  }
+
+  void _showSnack(String msg, bool isError) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red : Colors.green,
       ),
     );
   }

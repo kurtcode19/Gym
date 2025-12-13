@@ -86,6 +86,7 @@ class _AddMembershipScreenState extends State<AddMembershipScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Colors.black87),
+        centerTitle: true,
         title: Text(
           isEditing ? "Edit Membership" : "Add Membership",
           style: const TextStyle(
@@ -125,7 +126,8 @@ class _AddMembershipScreenState extends State<AddMembershipScreen> {
                         const SizedBox(height: 12),
                         _planDropdown(planProvider),
 
-                        if (_selectedPlan != null) _planPriceTag(_selectedPlan!),
+                        if (_selectedPlan != null)
+                          _planPriceTag(_selectedPlan!),
 
                         const SizedBox(height: 24),
                         _sectionTitle("Membership Period"),
@@ -279,7 +281,7 @@ class _AddMembershipScreenState extends State<AddMembershipScreen> {
   }
 
   // ----------------------------------------------------------------------
-  // PLAN PRICE TAG (PREMIUM HIGHLIGHT)
+  // PRICE TAG
   // ----------------------------------------------------------------------
 
   Widget _planPriceTag(MembershipPlan plan) {
@@ -332,9 +334,7 @@ class _AddMembershipScreenState extends State<AddMembershipScreen> {
             enabled: false,
             format: DateFormat("yyyy-MM-dd"),
             decoration: _premiumInput("End Date", Icons.event_available)
-                .copyWith(
-                  fillColor: Colors.grey[200],
-                ),
+                .copyWith(fillColor: Colors.grey[200]),
             validator: (v) => v == null ? "Required" : null,
           ),
         ),
@@ -352,10 +352,7 @@ class _AddMembershipScreenState extends State<AddMembershipScreen> {
       validator: (v) => v == null ? "Required" : null,
       decoration: _premiumInput("Status", Icons.info_outline),
       items: const [
-        DropdownMenuItem(
-          value: "Active",
-          child: Text("Active"),
-        ),
+        DropdownMenuItem(value: "Active", child: Text("Active")),
         DropdownMenuItem(value: "Pending", child: Text("Pending")),
         DropdownMenuItem(value: "Expired", child: Text("Expired")),
         DropdownMenuItem(value: "Cancelled", child: Text("Cancelled")),
@@ -381,40 +378,54 @@ class _AddMembershipScreenState extends State<AddMembershipScreen> {
   }
 
   // ----------------------------------------------------------------------
-  // SUBMIT BUTTON
+  // SUBMIT BUTTON WITH ERROR TRAPPING
   // ----------------------------------------------------------------------
 
   Widget _submitButton(bool isEditing) {
     return ElevatedButton(
       onPressed: () async {
-        if (_formKey.currentState?.saveAndValidate() ?? false) {
-          final data = _formKey.currentState!.value;
+        if (!(_formKey.currentState?.saveAndValidate() ?? false)) return;
+
+        final data = _formKey.currentState!.value;
+        final customerId = data["customer_id"];
+
+        try {
+          final membershipProvider =
+              Provider.of<MembershipProvider>(context, listen: false);
+
+          // -------------------------------------------------------------
+          // ❗ ERROR CHECK — PREVENT DUPLICATE ACTIVE MEMBERSHIP
+          // -------------------------------------------------------------
+          final existing = membershipProvider.memberships.where((m) =>
+              m.membership.customerId == customerId &&
+              (m.membership.status == "Active" ||
+               m.membership.status == "Pending"));
+
+          if (!isEditing && existing.isNotEmpty) {
+            _error("This customer already has an active membership.");
+            return;
+          }
 
           final membership = Membership(
             membershipId: isEditing ? widget.membership!.membershipId : null,
-            customerId: data["customer_id"],
+            customerId: customerId,
             planId: data["plan_id"],
             startDate: data["start_date"],
             endDate: data["end_date"],
             status: data["status"],
           );
 
-          try {
-            final provider =
-                Provider.of<MembershipProvider>(context, listen: false);
-
-            if (isEditing) {
-              await provider.updateMembership(membership);
-              _success("Membership updated!");
-            } else {
-              await provider.addMembership(membership);
-              _success("Membership added!");
-            }
-
-            Navigator.pop(context);
-          } catch (e) {
-            _error("Failed: $e");
+          if (isEditing) {
+            await membershipProvider.updateMembership(membership);
+            _success("Membership updated!");
+          } else {
+            await membershipProvider.addMembership(membership);
+            _success("Membership added!");
           }
+
+          Navigator.pop(context);
+        } catch (e) {
+          _error("Failed: $e");
         }
       },
       style: ElevatedButton.styleFrom(
@@ -440,6 +451,10 @@ class _AddMembershipScreenState extends State<AddMembershipScreen> {
       ),
     );
   }
+
+  // ----------------------------------------------------------------------
+  // MESSAGES
+  // ----------------------------------------------------------------------
 
   void _success(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(

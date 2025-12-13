@@ -27,6 +27,11 @@ class Membership {
   bool get isExpired {
     return endDate.isBefore(DateTime.now());
   }
+  bool get isExpiringSoon {
+  final now = DateTime.now();
+  final diff = endDate.difference(now).inDays;
+  return diff <= 3 && diff >= 0;   // expiring within 3 days
+}
 
   // Get the appropriate status considering expiration
   String get calculatedStatus {

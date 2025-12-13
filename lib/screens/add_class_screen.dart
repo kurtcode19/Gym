@@ -1,9 +1,9 @@
 // lib/screens/add_class_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
 import 'package:gym/models/class.dart';
-import 'package:gym/models/trainer.dart';
 import 'package:gym/providers/class_provider.dart';
 import 'package:gym/providers/trainer_provider.dart';
 import 'package:intl/intl.dart';
@@ -20,36 +20,39 @@ class AddClassScreen extends StatefulWidget {
 
 class _AddClassScreenState extends State<AddClassScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
-  
-  // Recurrence State
+
   bool _isRecurring = false;
-  List<int> _selectedWeekdays = []; // 1 = Mon, 7 = Sun
+  List<int> _selectedWeekdays = [];
   DateTime? _recurrenceEndDate;
   bool _isSaving = false;
-
-  InputDecoration _fieldDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.blueGrey),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      filled: true,
-      fillColor: Colors.grey.shade50,
-    );
-  }
 
   @override
   void initState() {
     super.initState();
-    // Disable recurrence editing if we are editing an existing specific class
-    if (widget.gymClass != null) {
-      _isRecurring = false;
-    } else {
-      _recurrenceEndDate = DateTime.now().add(const Duration(days: 30)); // Default 1 month
+    if (widget.gymClass == null) {
+      _recurrenceEndDate = DateTime.now().add(const Duration(days: 30));
     }
+  }
+
+  // ---------------------------------------------------------
+  // PREMIUM INPUT DECORATION
+  // ---------------------------------------------------------
+  InputDecoration _premiumField(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.grey[600]),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.blueAccent),
+      ),
+    );
   }
 
   @override
@@ -57,194 +60,66 @@ class _AddClassScreenState extends State<AddClassScreen> {
     final isEditing = widget.gymClass != null;
     final trainerProvider = Provider.of<TrainerProvider>(context);
 
-    Map<String, dynamic> initialValues = {};
-    if (isEditing) {
-      initialValues = {
-        'trainer_id': widget.gymClass!.trainerId,
-        'class_name': widget.gymClass!.className,
-        'schedule_time': widget.gymClass!.scheduleTime,
-        'duration_minutes': widget.gymClass!.durationMinutes.toString(),
-      };
-    } else {
-      initialValues = {
-        'schedule_time': DateTime.now().add(const Duration(hours: 1)).copyWith(minute: 0, second: 0, millisecond: 0),
-        'duration_minutes': '60',
-      };
-    }
+    final initialValues = isEditing
+        ? {
+            "class_name": widget.gymClass!.className,
+            "trainer_id": widget.gymClass!.trainerId,
+            "schedule_time": widget.gymClass!.scheduleTime,
+            "duration_minutes": widget.gymClass!.durationMinutes.toString(),
+          }
+        : {
+            "schedule_time": DateTime.now()
+                .add(const Duration(hours: 1))
+                .copyWith(minute: 0, second: 0, millisecond: 0),
+            "duration_minutes": "60",
+          };
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF4F6FA),
+
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Class Session' : 'Schedule Class'),
+        backgroundColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(.08),
         centerTitle: true,
-        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(
+          isEditing ? "Edit Class Session" : "Schedule Class",
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
       ),
+
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(18),
         child: FormBuilder(
           key: _formKey,
           initialValue: initialValues,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Basic Info
-              _buildSectionHeader('Class Details'),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      FormBuilderTextField(
-                        name: 'class_name',
-                        decoration: _fieldDecoration('Class Name', Icons.fitness_center),
-                        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderDropdown<String>(
-                        name: 'trainer_id',
-                        decoration: _fieldDecoration('Trainer', Icons.person),
-                        items: [
-                          const DropdownMenuItem(value: null, child: Text('Unassigned')), 
-                          ...trainerProvider.trainers.map((t) => DropdownMenuItem(value: t.trainerId, child: Text('${t.firstName} ${t.lastName}'))),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _header(isEditing),
+              const SizedBox(height: 24),
+
+              _sectionTitle("Class Details"),
+              _classDetails(trainerProvider),
 
               const SizedBox(height: 24),
-              
-              // 2. Schedule
-              _buildSectionHeader('Timing'),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      // If recurring, this acts as "Start Date/Time"
-                      FormBuilderDateTimePicker(
-                        name: 'schedule_time',
-                        decoration: _fieldDecoration(
-                          _isRecurring ? 'First Class Date & Time' : 'Date & Time', 
-                          Icons.calendar_today
-                        ),
-                        inputType: InputType.both,
-                        format: DateFormat('EEE, MMM d, yyyy - h:mm a'),
-                        validator: (value) {
-                          if (value == null) return 'Required';
-                          if (value.isBefore(DateTime.now()) && !isEditing) return 'Must be in future';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderTextField(
-                        name: 'duration_minutes',
-                        decoration: _fieldDecoration('Duration (min)', Icons.timer),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Required';
-                          final val = int.tryParse(value);
-                          if (val == null) return 'Invalid number';
-                          // ERROR TRAPPING: Range check
-                          if (val < 30) return 'Min 30 mins';
-                          if (val > 120) return 'Max 120 mins';
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
 
-              // 3. Recurrence Options (Only for new classes)
-              if (!isEditing) ...[
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildSectionHeader('Recurring Schedule?'),
-                    Switch(
-                      value: _isRecurring, 
-                       inactiveThumbColor: Colors.grey[700], // Color of the circle when inactive
-      inactiveTrackColor: Colors.grey[300], // Color of the track when inactive
-                      activeColor: Colors.blue,
-                      onChanged: (val) => setState(() => _isRecurring = val),
-                    ),
-                  ],
-                ),
-                
-                if (_isRecurring)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    child: Card(
-                      elevation: 0,
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue.shade100)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Repeat on days:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              children: [
-                                _buildDayChip('M', 1),
-                                _buildDayChip('T', 2),
-                                _buildDayChip('W', 3),
-                                _buildDayChip('T', 4),
-                                _buildDayChip('F', 5),
-                                _buildDayChip('S', 6),
-                                _buildDayChip('S', 7),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            const Text("Until:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            const SizedBox(height: 8),
-                            FormBuilderDateTimePicker(
-                              name: 'recurrence_end',
-                              initialValue: _recurrenceEndDate,
-                              inputType: InputType.date,
-                              decoration: _fieldDecoration('End Date', Icons.event_repeat),
-                              validator: (val) {
-                                if (_isRecurring && val == null) return 'End date required';
-                                return null;
-                              },
-                              onChanged: (val) => _recurrenceEndDate = val,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+              _sectionTitle("Timing"),
+              _timingInputs(isEditing),
+
+              const SizedBox(height: 24),
+
+              if (!isEditing) _recurringToggle(),
+              if (!isEditing) _recurringOptions(),
 
               const SizedBox(height: 32),
 
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : () => _handleSave(isEditing),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 2,
-                  ),
-                  child: _isSaving 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        isEditing ? 'Update Session' : (_isRecurring ? 'Generate Classes' : 'Schedule Class'),
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                ),
-              ),
+              _submitButton(isEditing),
             ],
           ),
         ),
@@ -252,150 +127,425 @@ class _AddClassScreenState extends State<AddClassScreen> {
     );
   }
 
-  Widget _buildDayChip(String label, int weekday) {
-    final isSelected = _selectedWeekdays.contains(weekday);
+  // ---------------------------------------------------------
+  // HEADER CARD
+  // ---------------------------------------------------------
+  Widget _header(bool isEditing) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 26),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEEF4FF), Color(0xFFE9F5FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4))
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3))
+              ],
+            ),
+            child: const Icon(Icons.schedule,
+                size: 40, color: Colors.blueAccent),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isEditing ? "Update Class Session" : "Create New Class",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // CLASS DETAILS
+  // ---------------------------------------------------------
+  Widget _classDetails(TrainerProvider trainerProvider) {
+    return _premiumCard(
+      Column(
+        children: [
+          FormBuilderTextField(
+            name: "class_name",
+            decoration: _premiumField("Class Name", Icons.fitness_center),
+            validator: (v) =>
+                v == null || v.isEmpty ? "Required" : null,
+          ),
+          const SizedBox(height: 16),
+
+          FormBuilderDropdown<String>(
+            name: "trainer_id",
+            decoration: _premiumField("Trainer", Icons.person),
+            items: [
+              const DropdownMenuItem(value: null, child: Text("Unassigned")),
+              ...trainerProvider.trainers.map(
+                (t) => DropdownMenuItem(
+                  value: t.trainerId,
+                  child: Text("${t.firstName} ${t.lastName}"),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // TIMING
+  // ---------------------------------------------------------
+  Widget _timingInputs(bool isEditing) {
+    return _premiumCard(
+      Column(
+        children: [
+          FormBuilderDateTimePicker(
+            name: "schedule_time",
+            inputType: InputType.both,
+            decoration: _premiumField("Date & Time", Icons.calendar_today),
+            format: DateFormat("EEE, MMM d, yyyy - h:mm a"),
+            validator: (v) {
+              if (v == null) return "Required";
+              if (!isEditing && v.isBefore(DateTime.now())) {
+                return "Must be in the future";
+              }
+              return null;
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          FormBuilderTextField(
+            name: "duration_minutes",
+            keyboardType: TextInputType.number,
+            decoration: _premiumField("Duration (min)", Icons.timer),
+            validator: (v) {
+              if (v == null || v.isEmpty) return "Required";
+              final val = int.tryParse(v);
+              if (val == null) return "Invalid number";
+              if (val < 30) return "Min 30 minutes";
+              if (val > 300) return "Max 300 minutes";
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // RECURRING SWITCH
+  // ---------------------------------------------------------
+  Widget _recurringToggle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _sectionTitle("Recurring Schedule?"),
+        Switch(
+          value: _isRecurring,
+          activeColor: Colors.blueAccent,
+          onChanged: (v) => setState(() => _isRecurring = v),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------
+  // RECURRING OPTIONS
+  // ---------------------------------------------------------
+  Widget _recurringOptions() {
+    if (!_isRecurring) return const SizedBox.shrink();
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: _premiumCard(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Repeat on days:",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+
+            Wrap(
+              spacing: 10,
+              children: [
+                _dayChip("M", DateTime.monday),
+                _dayChip("T", DateTime.tuesday),
+                _dayChip("W", DateTime.wednesday),
+                _dayChip("Th", DateTime.thursday),
+                _dayChip("F", DateTime.friday),
+                _dayChip("Sa", DateTime.saturday),
+                _dayChip("Su", DateTime.sunday),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+            const Text(
+              "Until:",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+
+            FormBuilderDateTimePicker(
+              name: "recurrence_end",
+              inputType: InputType.date,
+              decoration: _premiumField("End Date", Icons.event_repeat),
+              validator: (v) {
+                if (_isRecurring && v == null) return "Required";
+                return null;
+              },
+              onChanged: (v) => _recurrenceEndDate = v,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // DAY CHIP
+  // ---------------------------------------------------------
+  Widget _dayChip(String label, int weekday) {
+    final selected = _selectedWeekdays.contains(weekday);
+
     return FilterChip(
       label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
+      selected: selected,
+      selectedColor: Colors.blueAccent,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : Colors.black87,
+        fontWeight: FontWeight.bold,
+      ),
+      onSelected: (v) {
         setState(() {
-          if (selected) {
+          if (v) {
             _selectedWeekdays.add(weekday);
           } else {
             _selectedWeekdays.remove(weekday);
           }
         });
       },
-      checkmarkColor: Colors.white,
-      selectedColor: Colors.blue,
-      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8),
-      child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
-    );
-  }
-
-  Future<void> _handleSave(bool isEditing) async {
-    if (!_formKey.currentState!.saveAndValidate()) return;
-    
-    if (_isRecurring && _selectedWeekdays.isEmpty) {
-      _showSnackBar('Please select at least one day for recurrence.', isError: true);
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    final data = _formKey.currentState!.value;
-    final classProvider = Provider.of<ClassProvider>(context, listen: false);
-    
-    try {
-      if (isEditing) {
-        // --- SINGLE UPDATE LOGIC ---
-        final updatedClass = GymClass(
-          classId: widget.gymClass!.classId,
-          className: data['class_name'],
-          trainerId: data['trainer_id'],
-          scheduleTime: data['schedule_time'],
-          durationMinutes: int.parse(data['duration_minutes']),
-        );
-
-        final error = classProvider.validateClassSchedule(updatedClass);
-        if (error != null) {
-          _showErrorDialog(error);
-          setState(() => _isSaving = false);
-          return;
-        }
-
-        await classProvider.updateGymClass(updatedClass);
-        if (mounted) {
-          _showSnackBar('Class updated!');
-          Navigator.pop(context);
-        }
-      } else {
-        // --- CREATE LOGIC (Single or Recurring) ---
-        List<GymClass> classesToCreate = [];
-        
-        if (!_isRecurring) {
-          // Single Class
-          classesToCreate.add(GymClass(
-            classId: const Uuid().v4(),
-            className: data['class_name'],
-            trainerId: data['trainer_id'],
-            scheduleTime: data['schedule_time'],
-            durationMinutes: int.parse(data['duration_minutes']),
-          ));
-        } else {
-          // Recurring Logic
-          DateTime current = data['schedule_time'];
-          DateTime end = data['recurrence_end'];
-          // Ensure we don't go into infinite loop if dates are wrong
-          if (end.isBefore(current)) end = current; 
-
-          // Loop through days
-          while (current.isBefore(end.add(const Duration(days: 1)))) {
-            if (_selectedWeekdays.contains(current.weekday)) {
-              classesToCreate.add(GymClass(
-                classId: const Uuid().v4(),
-                className: data['class_name'],
-                trainerId: data['trainer_id'],
-                scheduleTime: current,
-                durationMinutes: int.parse(data['duration_minutes']),
-              ));
-            }
-            current = current.add(const Duration(days: 1));
-          }
-        }
-
-        if (classesToCreate.isEmpty) {
-           _showSnackBar('No dates matched your selection.', isError: true);
-           setState(() => _isSaving = false);
-           return;
-        }
-
-        // Validate Batch
-        final errors = classProvider.validateBatchSchedule(classesToCreate);
-        if (errors.isNotEmpty) {
-          // Show just the first few errors
-          _showErrorDialog("Conflicts found:\n${errors.take(3).join('\n')}${errors.length > 3 ? '\n...and ${errors.length - 3} more' : ''}");
-          setState(() => _isSaving = false);
-          return;
-        }
-
-        // Save Batch
-        await classProvider.addBatchGymClasses(classesToCreate);
-        if (mounted) {
-          _showSnackBar('Scheduled ${classesToCreate.length} class sessions!');
-          Navigator.pop(context);
-        }
-      }
-    } catch (e) {
-      if (mounted) _showSnackBar('Error: $e', isError: true);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(children: [Icon(Icons.warning, color: Colors.orange), SizedBox(width: 8), Text("Schedule Conflict")]),
-        content: Text(message),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))],
+  // ---------------------------------------------------------
+  // SUBMIT BUTTON
+  // ---------------------------------------------------------
+  Widget _submitButton(bool isEditing) {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: _isSaving ? null : () => _handleSave(isEditing),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: _isSaving
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                isEditing
+                    ? "Update Session"
+                    : (_isRecurring ? "Generate Classes" : "Schedule Class"),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
       ),
     );
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
+  // ---------------------------------------------------------
+  // SAVE LOGIC (NOW FULLY CONFLICT-AWARE)
+  // ---------------------------------------------------------
+  Future<void> _handleSave(bool isEditing) async {
+    if (!_formKey.currentState!.saveAndValidate()) return;
+
+    final data = _formKey.currentState!.value;
+    final provider = Provider.of<ClassProvider>(context, listen: false);
+
+    setState(() => _isSaving = true);
+
+    try {
+      if (isEditing) {
+        // ---------- SINGLE UPDATE ----------
+        final updated = GymClass(
+          classId: widget.gymClass!.classId,
+          className: data["class_name"],
+          trainerId: data["trainer_id"],
+          scheduleTime: data["schedule_time"],
+          durationMinutes: int.parse(data["duration_minutes"]),
+        );
+
+        final conflict = provider.validateFullConflict(
+          updated,
+          excludeId: updated.classId,
+        );
+
+        if (conflict != null) {
+          _showErrorDialog(conflict);
+          setState(() => _isSaving = false);
+          return;
+        }
+
+        await provider.updateGymClass(updated);
+        _showSnack("Class updated!");
+        Navigator.pop(context);
+      } else {
+        // ---------- NEW CLASS / RECURRING ----------
+        List<GymClass> sessions = [];
+
+        final base = GymClass(
+          classId: const Uuid().v4(),
+          className: data["class_name"],
+          trainerId: data["trainer_id"],
+          scheduleTime: data["schedule_time"],
+          durationMinutes: int.parse(data["duration_minutes"]),
+        );
+
+        if (!_isRecurring) {
+          sessions.add(base);
+        } else {
+          DateTime start = data["schedule_time"];
+          DateTime end = data["recurrence_end"];
+
+          if (end.isBefore(start)) end = start;
+
+          DateTime pointer = start;
+
+          while (!pointer.isAfter(end)) {
+            if (_selectedWeekdays.contains(pointer.weekday)) {
+              sessions.add(GymClass(
+                classId: const Uuid().v4(),
+                className: base.className,
+                trainerId: base.trainerId,
+                scheduleTime: pointer,
+                durationMinutes: base.durationMinutes,
+              ));
+            }
+            pointer = pointer.add(const Duration(days: 1));
+          }
+        }
+
+        // Validate all at once
+        final conflicts = provider.validateBatchSchedule(sessions);
+        if (conflicts.isNotEmpty) {
+          _showErrorDialog(conflicts.first);
+          setState(() => _isSaving = false);
+          return;
+        }
+
+        await provider.addBatchGymClasses(sessions);
+        _showSnack("Classes created!");
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      _showSnack("Error: $e", true);
+    }
+
+    setState(() => _isSaving = false);
+  }
+
+  // ---------------------------------------------------------
+  // HELPERS
+  // ---------------------------------------------------------
+  void _showErrorDialog(String msg) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber, color: Colors.orange),
+            SizedBox(width: 10),
+            Text("Schedule Conflict"),
+          ],
+        ),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            child: const Text("OK"),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnack(String msg, [bool error = false]) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        content: Text(msg),
+        backgroundColor: error ? Colors.red : Colors.green,
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // PREMIUM CARD
+  // ---------------------------------------------------------
+  Widget _premiumCard(Widget child) {
+    return Card(
+      elevation: 3,
+      shadowColor: Colors.black.withOpacity(.05),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(padding: const EdgeInsets.all(18), child: child),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // SECTION TITLE
+  // ---------------------------------------------------------
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }

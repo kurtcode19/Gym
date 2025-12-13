@@ -9,12 +9,15 @@ class DetailedMembership {
   final String customerFirstName;
   final String customerLastName;
   final String planName;
+  final String customerEmail;
+
   final double planMonthlyFee;
 
   DetailedMembership({
     required this.membership,
     required this.customerFirstName,
     required this.customerLastName,
+    required this.customerEmail,
     required this.planName,
     required this.planMonthlyFee,
   });
@@ -26,6 +29,7 @@ class DetailedMembership {
       customerLastName: map['customer_last_name'],
       planName: map['plan_name'],
       planMonthlyFee: map['plan_monthly_fee'],
+      customerEmail: map['customer_email'],   // NEW
     );
   }
 }

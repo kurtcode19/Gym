@@ -427,6 +427,7 @@ class DatabaseHelper {
         M.*,
         C.first_name AS customer_first_name,
         C.last_name AS customer_last_name,
+        C.email AS customer_email, 
         MP.plan_name AS plan_name,
         MP.monthly_fee AS plan_monthly_fee
       FROM MEMBERSHIP M

@@ -1,4 +1,5 @@
 // lib/screens/add_membership_plan_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +12,8 @@ class AddMembershipPlanScreen extends StatefulWidget {
   const AddMembershipPlanScreen({super.key, this.plan});
 
   @override
-  State<AddMembershipPlanScreen> createState() => _AddMembershipPlanScreenState();
+  State<AddMembershipPlanScreen> createState() =>
+      _AddMembershipPlanScreenState();
 }
 
 class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
@@ -21,140 +23,210 @@ class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.plan != null;
-    final theme = Theme.of(context);
 
-    Map<String, dynamic> initialValues = {};
-    if (isEditing) {
-      initialValues = {
-        'plan_name': widget.plan!.planName,
-        'monthly_fee': widget.plan!.monthlyFee.toString(),
-        'duration_value': widget.plan!.durationValue.toString(),
-        'duration_unit': widget.plan!.durationUnit,
-      };
-    } else {
-      initialValues = {
-        'duration_value': '12',
-        'duration_unit': DurationUnit.months,
-      };
-    }
+    final initialValues = isEditing
+        ? {
+            'plan_name': widget.plan!.planName,
+            'monthly_fee': widget.plan!.monthlyFee.toString(),
+            'duration_value': widget.plan!.durationValue.toString(),
+            'duration_unit': widget.plan!.durationUnit,
+          }
+        : {
+            'duration_value': '12',
+            'duration_unit': DurationUnit.months,
+          };
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA),
+
+      // ----------------------------------------------------------------------
+      // PREMIUM APP BAR
+      // ----------------------------------------------------------------------
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Membership Plan' : 'Add Membership Plan'),
+        iconTheme: const IconThemeData(color: Colors.black),
+        backgroundColor: Colors.white,
+        elevation: 6,
+        shadowColor: Colors.black.withOpacity(0.08),
+        centerTitle: true,
+        title: Text(
+          isEditing ? "Edit Membership Plan" : "Add Membership Plan",
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
         actions: [
           if (isEditing)
             IconButton(
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: () => _showDeleteDialog(context),
-            ),
+            )
         ],
       ),
-      body: Container(
-        color: theme.colorScheme.background,
-        child: Column(
-          children: [
-            // Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.fitness_center,
-                      size: 40,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    isEditing ? 'Update Membership Plan' : 'Create New Plan',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onBackground,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+
+      // ----------------------------------------------------------------------
+      // BODY
+      // ----------------------------------------------------------------------
+      body: Column(
+        children: [
+          // ------------------------------------------------------------------
+          // PREMIUM HEADER
+          // ------------------------------------------------------------------
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFEEF4FF),
+                  Color(0xFFE9F5FF),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
               ),
             ),
-            // Form
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            child: Column(
+              children: [
+                Container(
+                  width: 82,
+                  height: 82,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ],
                   ),
-                  child: FormBuilder(
-                    key: _formKey,
-                    initialValue: initialValues,
-                    child: Scrollbar(
+                  child: const Icon(
+                    Icons.fitness_center,
+                    size: 40,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  isEditing
+                      ? "Update Membership Plan"
+                      : "Create New Membership Plan",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isEditing
+                      ? "Modify existing plan details"
+                      : "Fill out details to create a new plan",
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 13,
+                  ),
+                )
+              ],
+            ),
+          ),
+
+          // ------------------------------------------------------------------
+          // FORM CARD
+          // ------------------------------------------------------------------
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Card(
+                elevation: 3,
+                shadowColor: Colors.black.withOpacity(0.05),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                child: FormBuilder(
+                  key: _formKey,
+                  initialValue: initialValues,
+                  child: Scrollbar(
+                    controller: _scrollController,
+                    child: ListView(
                       controller: _scrollController,
-                      child: ListView(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(20),
-                        children: [
-                          _buildSectionHeader('Plan Information'),
-                          const SizedBox(height: 16),
-                          _buildTextField(
-                            name: 'plan_name',
-                            label: 'Plan Name',
-                            icon: Icons.badge_outlined,
-                            isRequired: true,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildTextField(
-                            name: 'monthly_fee',
-                            label: 'Fee (\₱)',
-                            icon: Icons.attach_money_outlined,
-                            keyboardType: TextInputType.number,
-                            isRequired: true,
-                            hintText: 'e.g., 50.00',
-                          ),
-                          const SizedBox(height: 24),
-                          _buildSectionHeader('Duration'),
-                          const SizedBox(height: 16),
-                          _buildDurationFields(),
-                          const SizedBox(height: 32),
-                          _buildSubmitButton(isEditing, context),
-                        ],
-                      ),
+                      padding: const EdgeInsets.all(22),
+                      children: [
+                        _sectionHeader("Plan Information"),
+                        const SizedBox(height: 16),
+
+                        _textField(
+                          name: "plan_name",
+                          label: "Plan Name",
+                          icon: Icons.badge_outlined,
+                          isRequired: true,
+                        ),
+                        const SizedBox(height: 16),
+
+                        _textField(
+                          name: "monthly_fee",
+                          label: "Monthly Fee (₱)",
+                          icon: Icons.attach_money_outlined,
+                          keyboardType: TextInputType.number,
+                          isRequired: true,
+                          hintText: "e.g. 3000.00",
+                        ),
+
+                        const SizedBox(height: 30),
+                        _sectionHeader("Duration"),
+                        const SizedBox(height: 16),
+
+                        _durationFields(),
+
+                        const SizedBox(height: 36),
+                        _submitButton(isEditing),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          )
+        ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
+  // --------------------------------------------------------------------------
+  // SECTION HEADER
+  // --------------------------------------------------------------------------
+  Widget _sectionHeader(String title) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: Colors.blueAccent,
+            borderRadius: BorderRadius.circular(20),
           ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
+          ),
+        )
+      ],
     );
   }
 
-  Widget _buildTextField({
+  // --------------------------------------------------------------------------
+  // PREMIUM TEXT FIELD
+  // --------------------------------------------------------------------------
+  Widget _textField({
     required String name,
     required String label,
     required IconData icon,
@@ -164,191 +236,236 @@ class _AddMembershipPlanScreenState extends State<AddMembershipPlanScreen> {
   }) {
     return FormBuilderTextField(
       name: name,
+      keyboardType: keyboardType,
+      validator: (value) {
+        if (isRequired && (value == null || value.isEmpty)) {
+          return "$label is required";
+        }
+        if (name == "monthly_fee") {
+          if (value == null || value.isEmpty) return "Fee is required";
+          if (double.tryParse(value) == null) return "Enter a valid number";
+          if (double.parse(value) <= 0) return "Fee must be positive";
+        }
+        return null;
+      },
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        prefixIcon: Icon(icon, color: Colors.grey[600]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[400]!),
+        prefixIcon: Icon(icon, color: Colors.grey.shade600),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.blueAccent),
         ),
-        filled: true,
-        fillColor: Colors.grey[50],
       ),
-      keyboardType: keyboardType,
-      validator: isRequired
-          ? (value) {
-              if (value == null || value.isEmpty) return '$label is required';
-              if (name == 'monthly_fee') {
-                if (double.tryParse(value) == null) return 'Invalid number';
-                if (double.parse(value) <= 0) return 'Monthly fee must be positive';
-              }
-              return null;
-            }
-          : null,
     );
   }
 
-  Widget _buildDurationFields() {
+  // --------------------------------------------------------------------------
+  // DURATION FIELDS (Value + Unit)
+  // --------------------------------------------------------------------------
+  Widget _durationFields() {
     return Row(
       children: [
         Expanded(
           flex: 1,
           child: FormBuilderTextField(
-            name: 'duration_value',
-            decoration: InputDecoration(
-              labelText: 'Duration Value',
-              hintText: 'e.g., 12',
-              prefixIcon: Icon(Icons.numbers, color: Colors.grey[600]),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
+            name: "duration_value",
             keyboardType: TextInputType.number,
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Value cannot be empty';
-              if (int.tryParse(value) == null) return 'Invalid number';
-              if (int.parse(value) <= 0) return 'Value must be positive';
+              if (value == null || value.isEmpty) {
+                return "Required";
+              }
+              if (int.tryParse(value) == null) {
+                return "Must be number";
+              }
+              if (int.parse(value) <= 0) {
+                return "Must be positive";
+              }
               return null;
             },
+            decoration: InputDecoration(
+              labelText: "Duration",
+              hintText: "e.g. 12",
+              prefixIcon: Icon(Icons.timelapse, color: Colors.grey.shade600),
+              filled: true,
+              fillColor: Colors.white,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.blueAccent),
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           flex: 2,
           child: FormBuilderDropdown<DurationUnit>(
-            name: 'duration_unit',
+            name: "duration_unit",
+            validator: (value) => value == null ? "Required" : null,
             decoration: InputDecoration(
-              labelText: 'Unit',
-              prefixIcon: Icon(Icons.timelapse, color: Colors.grey[600]),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              labelText: "Unit",
+              prefixIcon: Icon(Icons.schedule, color: Colors.grey.shade600),
               filled: true,
-              fillColor: Colors.grey[50],
+              fillColor: Colors.white,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.blueAccent),
+              ),
             ),
-            validator: (value) => value == null ? 'Unit cannot be empty' : null,
             items: DurationUnit.values
-                .map((unit) => DropdownMenuItem<DurationUnit>(
-                      value: unit,
-                      child: Text(unit.toDisplayString()),
-                    ))
+                .map(
+                  (unit) => DropdownMenuItem(
+                    value: unit,
+                    child: Text(unit.toDisplayString()),
+                  ),
+                )
                 .toList(),
           ),
-        ),
+        )
       ],
     );
   }
 
-  Widget _buildSubmitButton(bool isEditing, BuildContext context) {
-    return ElevatedButton(
-      onPressed: () async {
-        if (_formKey.currentState?.saveAndValidate() ?? false) {
+  // --------------------------------------------------------------------------
+  // SUBMIT BUTTON
+  // --------------------------------------------------------------------------
+  Widget _submitButton(bool isEditing) {
+    return SizedBox(
+      height: 52,
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () async {
+          if (!(_formKey.currentState?.saveAndValidate() ?? false)) return;
+
           final data = _formKey.currentState!.value;
-          final newPlan = MembershipPlan(
+          final plan = MembershipPlan(
             planId: isEditing ? widget.plan!.planId : null,
             planName: data['plan_name'],
             monthlyFee: double.parse(data['monthly_fee']),
             durationValue: int.parse(data['duration_value']),
-            durationUnit: data['duration_unit'] as DurationUnit,
+            durationUnit: data['duration_unit'],
           );
 
           try {
+            final provider =
+                Provider.of<MembershipPlanProvider>(context, listen: false);
+
             if (isEditing) {
-              await Provider.of<MembershipPlanProvider>(context, listen: false).updateMembershipPlan(newPlan);
-              _showSuccessSnackbar(context, '${newPlan.planName} updated successfully!');
+              await provider.updateMembershipPlan(plan);
+              _success("${plan.planName} updated successfully!");
             } else {
-              await Provider.of<MembershipPlanProvider>(context, listen: false).addMembershipPlan(newPlan);
-              _showSuccessSnackbar(context, '${newPlan.planName} added successfully!');
+              await provider.addMembershipPlan(plan);
+              _success("${plan.planName} added successfully!");
             }
-            Navigator.of(context).pop();
+
+            Navigator.pop(context);
           } catch (e) {
-            _showErrorSnackbar(context, 'Failed to save plan: $e');
+            _error("Failed to save plan: $e");
           }
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        minimumSize: const Size.fromHeight(55),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        elevation: 2,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(isEditing ? Icons.save : Icons.add),
+            const SizedBox(width: 8),
+            Text(
+              isEditing ? "Update Plan" : "Add Plan",
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(isEditing ? Icons.save : Icons.add),
-          const SizedBox(width: 8),
-          Text(
-            isEditing ? 'Update Plan' : 'Add Plan',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // DELETE DIALOG
+  // --------------------------------------------------------------------------
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.delete_outline, color: Colors.red),
+            SizedBox(width: 10),
+            Text("Delete Plan"),
+          ],
+        ),
+        content: Text(
+            'Are you sure you want to delete "${widget.plan!.planName}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
           ),
+          ElevatedButton(
+            onPressed: () {
+              Provider.of<MembershipPlanProvider>(context, listen: false)
+                  .deleteMembershipPlan(widget.plan!.planId);
+
+              Navigator.pop(context);
+              Navigator.pop(context);
+              _success("Plan deleted successfully!");
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Delete"),
+          )
         ],
       ),
     );
   }
 
-  void _showDeleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.delete_outline, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Delete Plan'),
-            ],
-          ),
-          content: Text('Are you sure you want to delete "${widget.plan!.planName}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Provider.of<MembershipPlanProvider>(context, listen: false)
-                    .deleteMembershipPlan(widget.plan!.planId);
-                Navigator.of(context)
-                  ..pop()
-                  ..pop();
-                _showSuccessSnackbar(context, 'Plan deleted successfully!');
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showSuccessSnackbar(BuildContext context, String message) {
+  // --------------------------------------------------------------------------
+  // SNACKBAR HELPERS
+  // --------------------------------------------------------------------------
+  void _success(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(msg),
         backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  void _showErrorSnackbar(BuildContext context, String message) {
+  void _error(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(msg),
         backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

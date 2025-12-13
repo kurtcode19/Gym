@@ -1,13 +1,12 @@
-// lib/providers/class_provider.dart - UPDATED CONTENT
-
+// lib/providers/class_provider.dart
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:gym/models/class.dart';
 import 'package:gym/providers/database_helper.dart';
-import 'package:gym/models/trainer.dart';
 
-// Model to hold joined class data for display
+// Joined class model
 class DetailedGymClass {
-  final GymClass gymClass; 
+  final GymClass gymClass;
   final String? trainerFirstName;
   final String? trainerLastName;
 
@@ -25,193 +24,217 @@ class DetailedGymClass {
     );
   }
 
-  String get trainerFullName {
-    if (trainerFirstName != null && trainerLastName != null) {
-      return '$trainerFirstName $trainerLastName';
-    }
-    return 'N/A';
-  }
+  String get trainerFullName =>
+      (trainerFirstName != null && trainerLastName != null)
+          ? "$trainerFirstName $trainerLastName"
+          : "N/A";
 }
 
 class ClassProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
-  List<DetailedGymClass> _allClasses = []; 
-  List<DetailedGymClass> _filteredClasses = []; 
+
+  List<DetailedGymClass> _allClasses = [];
+  List<DetailedGymClass> _filteredClasses = [];
+
   bool _isLoading = false;
-
-  final TimeOfDay gymOpenTime = const TimeOfDay(hour: 6, minute: 0);
-  final TimeOfDay gymCloseTime = const TimeOfDay(hour: 22, minute: 0);
-
-  ClassProvider(this._dbHelper) {
-    fetchGymClasses(); 
-  }
-
-
-  List<DetailedGymClass> get classes => _filteredClasses;
   bool get isLoading => _isLoading;
 
-  Set<DateTime> get classDates {
+  List<DetailedGymClass> get classes => _filteredClasses;
+
+  final TimeOfDay gymOpenTime = const TimeOfDay(hour: 6, minute: 0);  // 6 AM
+  final TimeOfDay gymCloseTime = const TimeOfDay(hour: 22, minute: 0); // 10 PM
+
+  ClassProvider(this._dbHelper) {
+    fetchGymClasses();
+  }
+
+  // Return unique dates of scheduled classes
+  Set<DateTime> get allClassDates {
     return _allClasses.map((dc) {
-      final date = dc.gymClass.scheduleTime;
-      return DateTime.utc(date.year, date.month, date.day); 
+      final d = dc.gymClass.scheduleTime;
+      return DateTime(d.year, d.month, d.day);
     }).toSet();
   }
 
-  void _setLoading(bool value) {
-    _isLoading = value;
+  // -------------------------------
+  // LOADING STATE
+  // -------------------------------
+  void _setLoading(bool val) {
+    _isLoading = val;
     notifyListeners();
   }
 
+  // -------------------------------
+  // FETCH ALL CLASSES
+  // -------------------------------
   Future<void> fetchGymClasses() async {
     _setLoading(true);
     try {
-      final classMaps = await _dbHelper.getDetailedClasses();
-      _allClasses = classMaps.map((map) => DetailedGymClass.fromMap(map)).toList();
-      _filteredClasses = List.from(_allClasses); 
+      final rows = await _dbHelper.getDetailedClasses();
+      _allClasses = rows.map((e) => DetailedGymClass.fromMap(e)).toList();
+
+      _filteredClasses = List.from(_allClasses);
       notifyListeners();
     } catch (e) {
-      print('Error fetching gym classes: $e');
+      print("Error loading classes: $e");
     } finally {
       _setLoading(false);
     }
   }
 
+  // -------------------------------
+  // FILTER LOGIC
+  // -------------------------------
   void filterClasses({DateTime? date, String? trainerId, String? nameQuery}) {
-    List<DetailedGymClass> currentFilteredList = List.from(_allClasses);
+    List<DetailedGymClass> list = List.from(_allClasses);
 
     if (date != null) {
-      currentFilteredList = currentFilteredList.where((dc) {
-        final classDate = DateTime(dc.gymClass.scheduleTime.year, dc.gymClass.scheduleTime.month, dc.gymClass.scheduleTime.day);
-        return classDate.isAtSameMomentAs(DateTime(date.year, date.month, date.day));
+      list = list.where((dc) {
+        final dt = dc.gymClass.scheduleTime;
+        return dt.year == date.year &&
+            dt.month == date.month &&
+            dt.day == date.day;
       }).toList();
     }
 
     if (trainerId != null) {
-      currentFilteredList = currentFilteredList.where((dc) => dc.gymClass.trainerId == trainerId).toList();
+      list = list.where((dc) => dc.gymClass.trainerId == trainerId).toList();
     }
 
-    if (nameQuery != null && nameQuery.isNotEmpty) {
-      final lowerCaseQuery = nameQuery.toLowerCase();
-      currentFilteredList = currentFilteredList.where((dc) =>
-        dc.gymClass.className.toLowerCase().contains(lowerCaseQuery) ||
-        (dc.trainerFirstName?.toLowerCase().contains(lowerCaseQuery) ?? false) ||
-        (dc.trainerLastName?.toLowerCase().contains(lowerCaseQuery) ?? false)
-      ).toList();
+    if (nameQuery != null && nameQuery.trim().isNotEmpty) {
+      final q = nameQuery.toLowerCase();
+      list = list.where((dc) {
+        return dc.gymClass.className.toLowerCase().contains(q) ||
+            (dc.trainerFirstName?.toLowerCase().contains(q) ?? false) ||
+            (dc.trainerLastName?.toLowerCase().contains(q) ?? false);
+      }).toList();
     }
 
-    _filteredClasses = currentFilteredList;
+    _filteredClasses = list;
     notifyListeners();
   }
 
- String? validateClassSchedule(GymClass newClass) {
-    // 1. Duration Trap
-    if (newClass.durationMinutes < 30) {
-      return "Class duration is too short. Minimum is 30 minutes.";
-    }
-    if (newClass.durationMinutes > 120) {
-      return "Class duration is too long. Maximum is 120 minutes.";
-    }
-
+  // -------------------------------
+  // CORE: FULL CONFLICT VALIDATION
+  // -------------------------------
+  String? validateFullConflict(GymClass newClass, {String? excludeId}) {
     final newStart = newClass.scheduleTime;
-    final newEnd = newStart.add(Duration(minutes: newClass.durationMinutes));
+    final newEnd =
+        newStart.add(Duration(minutes: newClass.durationMinutes));
 
-    // 2. Check Operating Hours
-    final startMinutes = newStart.hour * 60 + newStart.minute;
-    final endMinutes = newEnd.hour * 60 + newEnd.minute;
-    final openMinutes = gymOpenTime.hour * 60 + gymOpenTime.minute;
-    final closeMinutes = gymCloseTime.hour * 60 + gymCloseTime.minute;
-
-    if (startMinutes < openMinutes) return "Class starts before opening hours.";
-    if (endMinutes > closeMinutes || newEnd.day != newStart.day) return "Class ends after closing hours.";
-
-    // 3. Check for Conflicts
-    for (var detailedClass in _allClasses) {
-      final existingClass = detailedClass.gymClass;
-      if (existingClass.classId == newClass.classId) continue; // Skip self
-
-      final existingStart = existingClass.scheduleTime;
-      final existingEnd = existingStart.add(Duration(minutes: existingClass.durationMinutes));
-
-      // Overlap Check
-      if (newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart)) {
-        // Trainer Conflict
-        if (newClass.trainerId != null && newClass.trainerId == existingClass.trainerId) {
-          return "Trainer is already booked for '${existingClass.className}' at this time.";
-        }
-        // Room/Space Conflict (Optional: Uncomment to enforce 1 class at a time in the whole gym)
-        // return "Time slot conflicts with '${existingClass.className}'."; 
-      }
+    // Validate duration
+    if (newClass.durationMinutes < 30) {
+      return "Class duration must be at least 30 minutes.";
     }
-    return null; // Valid
+    if (newClass.durationMinutes > 180) {
+      return "Class duration cannot exceed 180 minutes.";
+    }
+
+    // Validate gym hours
+    final startMin = newStart.hour * 60 + newStart.minute;
+    final endMin = newEnd.hour * 60 + newEnd.minute;
+    final openMin = gymOpenTime.hour * 60 + gymOpenTime.minute;
+    final closeMin = gymCloseTime.hour * 60 + gymCloseTime.minute;
+
+    if (startMin < openMin) return "Class starts before gym opens.";
+    if (endMin > closeMin) return "Class ends after gym closes.";
+
+    // Check all existing scheduled classes
+    for (final dc in _allClasses) {
+      final existing = dc.gymClass;
+
+      if (excludeId != null && excludeId == existing.classId) continue;
+
+      final eStart = existing.scheduleTime;
+      final eEnd = eStart.add(Duration(minutes: existing.durationMinutes));
+
+      // Overlap?
+      final overlap = newStart.isBefore(eEnd) && newEnd.isAfter(eStart);
+      if (!overlap) continue;
+
+      // 1. Trainer conflict
+      if (newClass.trainerId != null &&
+          newClass.trainerId == existing.trainerId) {
+        return "Trainer is already teaching '${existing.className}' at "
+            "${DateFormat('MMM d, h:mm a').format(eStart)}";
+      }
+
+      // 2. Same-class-name conflict (optional but recommended)
+      if (newClass.className == existing.className) {
+        return "'${newClass.className}' is already scheduled at "
+            "${DateFormat('MMM d, h:mm a').format(eStart)}";
+      }
+
+      // 3. Global gym slot conflict
+      return "Another class ('${existing.className}') is already scheduled at "
+          "${DateFormat('MMM d, h:mm a').format(eStart)}";
+    }
+
+    return null; // NO CONFLICT
   }
-  // Validate a list of classes and return a list of errors (if any)
-  List<String> validateBatchSchedule(List<GymClass> newClasses) {
+
+  // -------------------------------
+  // BATCH VALIDATION
+  // -------------------------------
+  List<String> validateBatchSchedule(List<GymClass> list) {
     List<String> errors = [];
-    for (var cls in newClasses) {
-      String? error = validateClassSchedule(cls);
-      if (error != null) {
-        errors.add("${cls.scheduleTime.toString().split('.')[0]}: $error");
+
+    for (final cls in list) {
+      final err = validateFullConflict(cls);
+      if (err != null) {
+        errors.add("${DateFormat('MMM d, h:mm a').format(cls.scheduleTime)} → $err");
       }
     }
+
     return errors;
   }
-
-  Future<void> addBatchGymClasses(List<GymClass> newClasses) async {
-    final db = await _dbHelper.database;
-    // Use a transaction for safety/speed
-    await db.transaction((txn) async {
-      for (var cls in newClasses) {
-        await txn.insert('CLASS', cls.toJson());
-      }
-    });
-    await fetchGymClasses();
-  }
-// Add this inside ClassProvider class
-Future<void> deleteBatchGymClasses(List<String> classIds) async {
+Future<void> addBatchGymClasses(List<GymClass> newClasses) async {
   final db = await _dbHelper.database;
+
   await db.transaction((txn) async {
-    for (var id in classIds) {
-      await txn.delete('CLASS', where: 'class_id = ?', whereArgs: [id]);
+    for (final cls in newClasses) {
+      await txn.insert('CLASS', cls.toJson());
     }
   });
-  // Update local state
-  _allClasses.removeWhere((c) => classIds.contains(c.gymClass.classId));
-  _filteredClasses.removeWhere((c) => classIds.contains(c.gymClass.classId));
-  notifyListeners();
+
+  await fetchGymClasses(); // reload list after insertion
 }
-
-  Future<void> addGymClass(GymClass gymClass) async {
-    try {
-      await _dbHelper.insertClass(gymClass.toJson());
-      await fetchGymClasses(); 
-    } catch (e) {
-      print('Error adding gym class: $e');
-      rethrow;
-    }
+  // -------------------------------
+  // CRUD OPERATIONS
+  // -------------------------------
+  Future<void> addGymClass(GymClass cls) async {
+    await _dbHelper.insertClass(cls.toJson());
+    await fetchGymClasses();
   }
 
-  Future<void> updateGymClass(GymClass gymClass) async {
-    try {
-      await _dbHelper.updateClass(gymClass.toJson());
-      await fetchGymClasses(); 
-    } catch (e) {
-      print('Error updating gym class: $e');
-      rethrow;
-    }
+  Future<void> updateGymClass(GymClass cls) async {
+    await _dbHelper.updateClass(cls.toJson());
+    await fetchGymClasses();
+  }
+  
+  Future<void> deleteGymClass(String id) async {
+    await _dbHelper.deleteClass(id);
+    _allClasses.removeWhere((c) => c.gymClass.classId == id);
+    _filteredClasses.removeWhere((c) => c.gymClass.classId == id);
+    notifyListeners();
   }
 
-  Future<void> deleteGymClass(String classId) async {
-    try {
-      await _dbHelper.deleteClass(classId);
-      _allClasses.removeWhere((c) => c.gymClass.classId == classId);
-      _filteredClasses.removeWhere((c) => c.gymClass.classId == classId);
-      notifyListeners();
-    } catch (e) {
-      print('Error deleting gym class: $e');
-    }
+  Future<void> deleteBatchGymClasses(List<String> ids) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      for (var id in ids) {
+        await txn.delete('CLASS', where: 'class_id = ?', whereArgs: [id]);
+      }
+    });
+
+    _allClasses.removeWhere((c) => ids.contains(c.gymClass.classId));
+    _filteredClasses.removeWhere((c) => ids.contains(c.gymClass.classId));
+    notifyListeners();
   }
 
-  @override
+  // -------------------------------
+  // SEARCH
+  // -------------------------------
   void searchGymClasses(String query) {
     filterClasses(nameQuery: query);
   }

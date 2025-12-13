@@ -1,5 +1,3 @@
-// lib/screens/payments_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gym/providers/payment_provider.dart';
@@ -15,7 +13,6 @@ class PaymentsScreen extends StatefulWidget {
 }
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
-  // FILTER PANEL STATE ---------------------------------------------------------
   bool _filtersExpanded = false;
   String _quickFilter = "All";
 
@@ -23,7 +20,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   String? _paymentMethod;
   String? _paymentStatus;
 
-  // QUICK FILTER LOGIC ---------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // QUICK FILTER LOGIC (unchanged)
+  // ---------------------------------------------------------------------------
   void _applyQuickFilter(String filter) {
     final now = DateTime.now();
     DateTime start;
@@ -45,7 +44,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             .subtract(Duration(days: now.weekday - 1));
         end = start.add(const Duration(days: 6, hours: 23, minutes: 59));
       } else {
-        // This Month
         start = DateTime(now.year, now.month, 1);
         end = DateTime(now.year, now.month + 1, 1)
             .subtract(const Duration(seconds: 1));
@@ -55,7 +53,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     });
   }
 
-  // PICK DATE RANGE ------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // DATE, METHOD & STATUS PICKERS (unchanged logic)
+  // ---------------------------------------------------------------------------
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
 
@@ -64,7 +64,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 5),
       initialDateRange: _dateRange ??
-          DateTimeRange(start: now.subtract(const Duration(days: 30)), end: now),
+          DateTimeRange(
+              start: now.subtract(const Duration(days: 30)), end: now),
     );
 
     if (picked != null) {
@@ -75,115 +76,90 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
-Future<void> _pickMethod() async {
-  final method = await showDialog<String>(
-    context: context,
-    builder: (dialogContext) => SimpleDialog(
-      title: const Text("Payment Method"),
-      children: [
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, null),
-          child: const Text("Any"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Cash"),
-          child: const Text("Cash"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Credit Card"),
-          child: const Text("Credit Card"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Debit Card"),
-          child: const Text("Debit Card"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Bank Transfer"),
-          child: const Text("Bank Transfer"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Check"),
-          child: const Text("Check"),
-        ),
-      ],
-    ),
-  );
+  Future<void> _pickMethod() async {
+    final method = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text("Payment Method"),
+        children: [
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, null), child: const Text("Any")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Cash"), child: const Text("Cash")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Credit Card"), child: const Text("Credit Card")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Debit Card"), child: const Text("Debit Card")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Bank Transfer"), child: const Text("Bank Transfer")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Check"), child: const Text("Check")),
+        ],
+      ),
+    );
 
-  setState(() {
-    _paymentMethod = method;
-    _quickFilter = "Custom";
-  });
-}
+    setState(() {
+      _paymentMethod = method;
+      _quickFilter = "Custom";
+    });
+  }
 
-Future<void> _pickStatus() async {
-  final status = await showDialog<String>(
-    context: context,
-    builder: (dialogContext) => SimpleDialog(
-      title: const Text("Payment Status"),
-      children: [
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, null),
-          child: const Text("Any"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Completed"),
-          child: const Text("Completed"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Pending"),
-          child: const Text("Pending"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Failed"),
-          child: const Text("Failed"),
-        ),
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, "Refunded"),
-          child: const Text("Refunded"),
-        ),
-      ],
-    ),
-  );
+  Future<void> _pickStatus() async {
+    final status = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text("Payment Status"),
+        children: [
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, null), child: const Text("Any")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Completed"), child: const Text("Completed")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Pending"), child: const Text("Pending")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Failed"), child: const Text("Failed")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(dialogContext, "Refunded"), child: const Text("Refunded")),
+        ],
+      ),
+    );
 
-  setState(() {
-    _paymentStatus = status;
-    _quickFilter = "Custom";
-  });
-}
+    setState(() {
+      _paymentStatus = status;
+      _quickFilter = "Custom";
+    });
+  }
 
-
-  // MATCH FILTERS --------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // APPLY FILTERS (unchanged)
+  // ---------------------------------------------------------------------------
   bool _matchesFilters(DetailedPayment dp) {
     final p = dp.payment;
 
-    // DATE RANGE
     if (_dateRange != null) {
       if (p.paymentDate.isBefore(_dateRange!.start) ||
           p.paymentDate.isAfter(_dateRange!.end)) return false;
     }
 
-    // METHOD
     if (_paymentMethod != null && p.method != _paymentMethod) return false;
 
-    // STATUS
     if (_paymentStatus != null &&
         p.status.toLowerCase() != _paymentStatus!.toLowerCase()) return false;
 
     return true;
   }
 
-  // QUICK CHIP -----------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // UI ELEMENTS
+  // ---------------------------------------------------------------------------
+
   Widget _chip(String label) {
     final active = _quickFilter == label;
+
     return ChoiceChip(
-      label: Text(label, style: TextStyle(color: active ? Colors.white : Colors.black)),
+      label: Text(
+        label,
+        style: TextStyle(
+            color: active ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w600),
+      ),
       selected: active,
-      selectedColor: Colors.blue,
+      selectedColor: Colors.blueAccent,
+      backgroundColor: Colors.white,
+      elevation: active ? 3 : 0,
       onSelected: (_) => _applyQuickFilter(label),
     );
   }
 
-  // INLINE FILTER BUTTON --------------------------------------------------------
   Widget _filterButton({
     required IconData icon,
     required String label,
@@ -192,84 +168,205 @@ Future<void> _pickStatus() async {
   }) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
           color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.grey.shade300),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.05),
+              blurRadius: 4,
+              offset: const Offset(0, 3),
+            )
+          ],
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18),
-            const SizedBox(width: 8),
-            Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
-            Expanded(child: Text(value)),
-            const Icon(Icons.chevron_right, size: 16),
+            Icon(icon, size: 20, color: Colors.blueAccent),
+            const SizedBox(width: 12),
+            Text(label,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(value,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.grey.shade700)),
+            ),
+            const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
           ],
         ),
       ),
     );
   }
 
-  // COLOR AND ICON HELPERS -----------------------------------------------------
+  // STATUS COLOR & ICON
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'completed': return Colors.green;
-      case 'failed': return Colors.red;
-      case 'refunded': return Colors.orange;
-      case 'pending': return Colors.blue;
-      default: return Colors.grey;
+      case 'completed':
+        return Colors.green;
+      case 'failed':
+        return Colors.red;
+      case 'refunded':
+        return Colors.orange;
+      case 'pending':
+        return Colors.blue;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getMethodIcon(String? method) {
     switch (method?.toLowerCase()) {
-      case 'cash': return Icons.payments_outlined;
-      case 'credit card': return Icons.credit_card;
-      case 'debit card': return Icons.credit_card_outlined;
-      case 'bank transfer': return Icons.account_balance;
-      case 'check': return Icons.fact_check_outlined;
-      default: return Icons.attach_money;
+      case 'cash':
+        return Icons.payments_outlined;
+      case 'credit card':
+        return Icons.credit_card;
+      case 'debit card':
+        return Icons.credit_card_outlined;
+      case 'bank transfer':
+        return Icons.account_balance;
+      case 'check':
+        return Icons.fact_check_outlined;
+      default:
+        return Icons.attach_money;
     }
   }
 
-  // MAIN BUILD -----------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // PREMIUM PAYMENT TILE
+  // ---------------------------------------------------------------------------
+  Widget _paymentTile(
+      BuildContext context, PaymentProvider provider, DetailedPayment dp) {
+    final p = dp.payment;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => AddPaymentScreen(payment: p))),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _getStatusColor(p.status).withOpacity(.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            _getMethodIcon(p.method),
+            color: _getStatusColor(p.status),
+            size: 24,
+          ),
+        ),
+        title: Text(
+          "${dp.customerFirstName} ${dp.customerLastName}",
+          style: const TextStyle(
+              fontWeight: FontWeight.w800, fontSize: 15),
+        ),
+        subtitle: Text(
+          DateFormat('MMM d, yyyy • h:mm a').format(p.paymentDate),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        ),
+        trailing: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              "₱${p.amount.toStringAsFixed(2)}",
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.green),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: _getStatusColor(p.status).withOpacity(.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                p.status,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    color: _getStatusColor(p.status)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // MAIN UI
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-   appBar: AppBar(
-  title: const Text(
-    "Payments History",
-    style: TextStyle(
-      fontWeight: FontWeight.bold,
-      color: Colors.black87,
-    ),
-  ),
-  centerTitle: true,
-  backgroundColor: Colors.white,
-  elevation: 4,
-  shadowColor: Colors.black26,
-  surfaceTintColor: Colors.transparent,
-  iconTheme: const IconThemeData(color: Colors.black87),
-),
+      // ---------------- PREMIUM WHITE APPBAR ----------------
+      appBar: AppBar(
+        title: const Text(
+          "Payments History",
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+            letterSpacing: 0.2,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 10,
+        shadowColor: Colors.black.withOpacity(.15),
+        surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
 
-
+      // ---------------- MAIN BODY ----------------
       body: Consumer<PaymentProvider>(
         builder: (_, provider, __) {
           final filtered = provider.payments.where(_matchesFilters).toList();
 
           return Column(
             children: [
-              // SEARCH + FILTER HEADER ----------------------------------------
+              // ---------------- FILTER HEADER ----------------
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(.08),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(18),
-                    bottomRight: Radius.circular(18),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF3F7FF), Color(0xFFEFF6FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(22),
+                    bottomRight: Radius.circular(22),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    )
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -284,49 +381,51 @@ Future<void> _pickStatus() async {
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
                                 borderSide: BorderSide.none,
                               ),
                             ),
                             onChanged: provider.searchPayments,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
 
-                        // FILTER BUTTON
+                        // FILTER TOGGLE
                         InkWell(
                           onTap: () =>
                               setState(() => _filtersExpanded = !_filtersExpanded),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: _filtersExpanded
-                                    ? Colors.blue
+                                    ? Colors.blueAccent
                                     : Colors.grey.shade300,
+                                width: 1.3,
                               ),
-                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               _filtersExpanded
                                   ? Icons.filter_list_off
                                   : Icons.filter_list,
-                              color: _filtersExpanded ? Colors.blue : Colors.black87,
-                              size: 22,
+                              color: _filtersExpanded
+                                  ? Colors.blueAccent
+                                  : Colors.black87,
                             ),
                           ),
                         ),
                       ],
                     ),
 
-                    // COLLAPSIBLE FILTER AREA --------------------------------
+                    // FILTER PANEL
                     if (_filtersExpanded) ...[
                       const SizedBox(height: 16),
 
                       Wrap(
-                        spacing: 6,
+                        spacing: 8,
                         children: [
                           _chip("All"),
                           _chip("Today"),
@@ -335,18 +434,19 @@ Future<void> _pickStatus() async {
                         ],
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
                       _filterButton(
                         icon: Icons.date_range,
-                        label: "Date",
+                        label: "Date Range",
                         value: _dateRange == null
                             ? "Any"
-                            : "${DateFormat('MMM d').format(_dateRange!.start)} - ${DateFormat('MMM d').format(_dateRange!.end)}",
+                            : "${DateFormat('MMM d').format(_dateRange!.start)} - "
+                                "${DateFormat('MMM d').format(_dateRange!.end)}",
                         onTap: _pickDateRange,
                       ),
 
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
 
                       _filterButton(
                         icon: Icons.payment,
@@ -355,36 +455,41 @@ Future<void> _pickStatus() async {
                         onTap: _pickMethod,
                       ),
 
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
 
                       _filterButton(
-                        icon: Icons.flag,
+                        icon: Icons.check_circle,
                         label: "Status",
                         value: _paymentStatus ?? "Any",
                         onTap: _pickStatus,
                       ),
-                    ]
+                    ],
                   ],
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
-              // LIST ---------------------------------------------------------
+              // ---------------- PAYMENT LIST ----------------
               Expanded(
                 child: provider.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : filtered.isEmpty
-                        ? const Center(child: Text("No matching payments"))
+                        ? const Center(
+                            child: Text(
+                              "No matching payments",
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          )
                         : ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
                             itemCount: filtered.length,
-                            itemBuilder: (context, i) {
-                              final dp = filtered[i];
-                              final p = dp.payment;
-
-                              return _paymentTile(context, provider, dp);
-                            },
+                            itemBuilder: (context, i) =>
+                                _paymentTile(context, provider, filtered[i]),
                           ),
               ),
             ],
@@ -399,78 +504,7 @@ Future<void> _pickStatus() async {
         ),
         label: const Text("Receive Payment"),
         icon: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  // PAYMENT TILE ---------------------------------------------------------------
-  Widget _paymentTile(
-      BuildContext context, PaymentProvider provider, DetailedPayment dp) {
-    final p = dp.payment;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
-        ],
-      ),
-      child: ListTile(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => AddPaymentScreen(payment: p)),
-        ),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: _getStatusColor(p.status).withOpacity(.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            _getMethodIcon(p.method),
-            color: _getStatusColor(p.status),
-            size: 24,
-          ),
-        ),
-        title: Text(
-          "${dp.customerFirstName} ${dp.customerLastName}",
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          DateFormat('MMM d, yyyy • h:mm a').format(p.paymentDate),
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
-        ),
-        trailing: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              "₱${p.amount.toStringAsFixed(2)}",
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.green),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                color: _getStatusColor(p.status).withOpacity(.12),
-              ),
-              child: Text(
-                p.status,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                  color: _getStatusColor(p.status),
-                ),
-              ),
-            ),
-          ],
-        ),
+        backgroundColor: Colors.blueAccent,
       ),
     );
   }

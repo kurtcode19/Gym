@@ -18,6 +18,10 @@ class DetailedPTSession {
     this.packagePrice,
     this.packageTotalSessions,
   });
+
+  get startTime => null;
+
+  get customerId => null;
 }
 
 

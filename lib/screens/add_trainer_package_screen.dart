@@ -1,8 +1,9 @@
-// lib/screens/add_trainer_package_screen.dart
+// lib/screens/add_trainer_package_screen.dart 
 
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
+
 import 'package:gym/models/trainer_package.dart';
 import 'package:gym/providers/trainer_package_provider.dart';
 import 'package:gym/providers/customer_provider.dart';
@@ -20,20 +21,8 @@ class AddTrainerPackageScreen extends StatefulWidget {
 
 class _AddTrainerPackageScreenState extends State<AddTrainerPackageScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
-  int _planType = 0; // 0 = Session Based, 1 = Unlimited
 
-  InputDecoration _fieldDecoration(String label, IconData icon,
-      {String? hintText, String? prefixText}) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hintText,
-      prefixText: prefixText,
-      prefixIcon: Icon(icon, color: Colors.blueGrey),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      filled: true,
-      fillColor: Colors.grey.shade50,
-    );
-  }
+  int _planType = 0; // 0 = session-based, 1 = unlimited
 
   @override
   void initState() {
@@ -43,56 +32,275 @@ class _AddTrainerPackageScreenState extends State<AddTrainerPackageScreen> {
     }
   }
 
+  // ------------------------ PREMIUM FIELD DECORATION ------------------------
+  InputDecoration _premiumField(String label, IconData icon,
+      {String? hint, String? prefix}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixText: prefix,
+      filled: true,
+      fillColor: Colors.white,
+      prefixIcon: Icon(icon, color: Colors.grey[600]),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.blueAccent, width: 1.5),
+      ),
+    );
+  }
+
+  // ------------------------ SECTION TITLE ------------------------
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------------ PREMIUM CARD ------------------------
+  Widget _premiumCard(Widget child) {
+    return Card(
+      elevation: 3,
+      shadowColor: Colors.black.withOpacity(.06),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.package != null;
     final customerProvider = Provider.of<CustomerProvider>(context);
     final trainerProvider = Provider.of<TrainerProvider>(context);
 
-    Map<String, dynamic> initialValues = isEditing
+    final customerList = customerProvider.customers;
+    final trainerList = trainerProvider.trainers;
+
+    // Defensive: ensure lists are not empty
+    if (customerList.isEmpty || trainerList.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Sell PT Package"),
+        ),
+        body: const Center(
+          child: Text("Required data missing. Please sync your database."),
+        ),
+      );
+    }
+
+    final initialValues = widget.package == null
         ? {
+            'start_date': DateTime.now(),
+            'end_date': DateTime.now().add(const Duration(days: 30)),
+            'sessions': '10',
+            'price': '0.00'
+          }
+        : {
             'customer_id': widget.package!.customerId,
             'trainer_id': widget.package!.trainerId,
             'start_date': widget.package!.startDate,
             'end_date': widget.package!.endDate,
             'sessions': widget.package!.totalSessions == -1
-                ? 'Unlimited'
+                ? "Unlimited"
                 : widget.package!.totalSessions.toString(),
             'package_name': widget.package!.packageName,
             'price': widget.package!.price.toStringAsFixed(2),
-          }
-        : {
-            'start_date': DateTime.now(),
-            'end_date': DateTime.now().add(const Duration(days: 30)),
-            'sessions': '10',
-            'price': '0.00',
           };
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF4F6FA),
+
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Package' : 'Sell PT Package'),
+        backgroundColor: Colors.white,
+        elevation: 6,
+        shadowColor: Colors.black.withOpacity(.08),
         centerTitle: true,
-        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(
+          isEditing ? "Edit PT Package" : "Sell PT Package",
+          style: const TextStyle(
+              color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
       ),
 
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: FormBuilder(
           key: _formKey,
           initialValue: initialValues,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader("Participants"),
-              _buildParticipantsCard(customerProvider, trainerProvider),
+              _sectionTitle("Participants"),
+              _premiumCard(
+                Column(
+                  children: [
+                    FormBuilderDropdown<String>(
+                      name: 'customer_id',
+                      decoration: _premiumField("Select Member", Icons.person),
+                      validator: (v) => v == null ? "Required" : null,
+                      items: customerList
+                          .map((c) => DropdownMenuItem(
+                                value: c.customerId,
+                                child:
+                                    Text("${c.firstName} ${c.lastName}"),
+                              ))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    FormBuilderDropdown<String>(
+                      name: 'trainer_id',
+                      decoration: _premiumField(
+                          "Select Trainer", Icons.sports_gymnastics),
+                      validator: (v) => v == null ? "Required" : null,
+                      items: trainerList
+                          .map((t) => DropdownMenuItem(
+                                value: t.trainerId,
+                                child: Text("${t.firstName} ${t.lastName}"),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 24),
-              _buildSectionHeader("Plan Configuration"),
-              _buildPlanCard(),
+
+              _sectionTitle("Plan Configuration"),
+              _premiumCard(
+                Column(
+                  children: [
+                    ToggleButtons(
+                      isSelected: [_planType == 0, _planType == 1],
+                      onPressed: (i) {
+                        setState(() {
+                          _planType = i;
+                          _formKey.currentState?.fields['sessions']
+                              ?.didChange(i == 1 ? "Unlimited" : "10");
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      selectedColor: Colors.white,
+                      fillColor: Colors.blueAccent,
+                      children: const [
+                        Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 14),
+                            child: Text("Session-Based")),
+                        Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 14),
+                            child: Text("Unlimited")),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    if (_planType == 0)
+                      FormBuilderTextField(
+                        name: 'sessions',
+                        decoration:
+                            _premiumField("Number of Sessions", Icons.repeat),
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            v == null || v.isEmpty ? "Required" : null,
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    FormBuilderDateTimePicker(
+                      name: 'start_date',
+                      inputType: InputType.date,
+                      decoration:
+                          _premiumField("Start Date", Icons.date_range),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    FormBuilderDateTimePicker(
+                      name: 'end_date',
+                      inputType: InputType.date,
+                      decoration:
+                          _premiumField("End Date", Icons.event_busy),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    FormBuilderTextField(
+                      name: 'package_name',
+                      decoration: _premiumField(
+                          "Package Name", Icons.label,
+                          hint: "e.g. 12-Session Promo"),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    FormBuilderTextField(
+                      name: 'price',
+                      decoration: _premiumField("Total Price", Icons.money,
+                          prefix: "₱ "),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? "Required" : null,
+                    ),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 32),
-              _buildSubmitButton(isEditing),
+
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _submitButton(isEditing),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(
+                    isEditing ? "Update Package" : "Activate Package",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -100,174 +308,8 @@ class _AddTrainerPackageScreenState extends State<AddTrainerPackageScreen> {
     );
   }
 
-  // UI WIDGETS -----------------------------------------------------------------------------------
-
-  Widget _buildParticipantsCard(
-      CustomerProvider customerProvider, TrainerProvider trainerProvider) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            FormBuilderDropdown<String>(
-              name: 'customer_id',
-              decoration: _fieldDecoration('Select Member', Icons.person),
-              validator: (val) => val == null ? 'Required' : null,
-              items: customerProvider.customers
-                  .map((c) => DropdownMenuItem(
-                        value: c.customerId,
-                        child: Text("${c.firstName} ${c.lastName}"),
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 16),
-            FormBuilderDropdown<String>(
-              name: 'trainer_id',
-              decoration:
-                  _fieldDecoration('Select Trainer', Icons.sports_gymnastics),
-              validator: (val) => val == null ? 'Required' : null,
-              items: trainerProvider.trainers
-                  .map((t) => DropdownMenuItem(
-                        value: t.trainerId,
-                        child: Text("${t.firstName} ${t.lastName}"),
-                      ))
-                  .toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlanCard() {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Center(
-              child: ToggleButtons(
-                isSelected: [_planType == 0, _planType == 1],
-                onPressed: (index) {
-                  setState(() {
-                    _planType = index;
-
-                    if (_planType == 1) {
-                      _formKey.currentState?.fields['sessions']
-                          ?.didChange('Unlimited');
-                    } else {
-                      _formKey.currentState?.fields['sessions']
-                          ?.didChange('10');
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(12),
-                selectedColor: Colors.white,
-                fillColor: Theme.of(context).primaryColor,
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text("Session Based"),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text("Unlimited Time"),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            if (_planType == 0) ...[
-              FormBuilderTextField(
-                name: 'sessions',
-                decoration:
-                    _fieldDecoration('Number of Sessions', Icons.repeat),
-                keyboardType: TextInputType.number,
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              FormBuilderDateTimePicker(
-                name: 'end_date',
-                inputType: InputType.date,
-                decoration:
-                    _fieldDecoration('Valid Until (Expiry)', Icons.event_busy),
-              ),
-            ] else ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: FormBuilderDateTimePicker(
-                      name: 'start_date',
-                      inputType: InputType.date,
-                      decoration:
-                          _fieldDecoration('Start Date', Icons.date_range),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: FormBuilderDateTimePicker(
-                      name: 'end_date',
-                      inputType: InputType.date,
-                      decoration: _fieldDecoration(
-                          'End Date', Icons.event_busy),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            const SizedBox(height: 16),
-            FormBuilderTextField(
-              name: 'package_name',
-              decoration: _fieldDecoration('Package Name', Icons.label,
-                  hintText: 'e.g. Summer Body Promo'),
-            ),
-            const SizedBox(height: 16),
-            FormBuilderTextField(
-              name: 'price',
-              decoration:
-                  _fieldDecoration('Total Price', Icons.attach_money,
-                      prefixText: '₱ '),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubmitButton(bool isEditing) {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        onPressed: _handleSubmit(isEditing),
-        child: Text(
-          isEditing ? 'Update Package' : 'Activate Package',
-          style: const TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  // SUBMISSION + ERROR TRAPPING ---------------------------------------------------------------------
-
-  VoidCallback _handleSubmit(bool isEditing) {
+  // ------------------------ SUBMIT LOGIC (ERROR-PROTECTED) ------------------------
+  VoidCallback _submitButton(bool isEditing) {
     return () async {
       try {
         if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
@@ -276,102 +318,80 @@ class _AddTrainerPackageScreenState extends State<AddTrainerPackageScreen> {
         }
 
         final data = _formKey.currentState!.value;
-        final packageProvider =
-            Provider.of<TrainerPackageProvider>(context, listen: false);
 
-        final String customerId = data['customer_id'];
-        final String trainerId = data['trainer_id'];
+        // Defensive: ensure customer & trainer selections exist
+        if (data['customer_id'] == null ||
+            data['trainer_id'] == null) {
+          _toast("Customer and trainer must be selected.");
+          return;
+        }
 
-        // -----------------------------
-        // 1. LOAD ALL EXISTING PACKAGES
-        // -----------------------------
-        final existingPackages =
-            await packageProvider.getPackagesForCustomer(customerId);
+        // Validate price
+        double? price = double.tryParse(data['price'].toString());
+        if (price == null || price < 0) {
+          _toast("Invalid price.");
+          return;
+        }
 
-        // Filter same trainer packages except current editing one
-        final activeForTrainer = existingPackages.where((p) {
-          if (isEditing && p.packageId == widget.package!.packageId) return false;
-          return p.trainerId == trainerId && p.status == "Active";
-        }).toList();
-
-        // -----------------------------
-        // 2. BLOCK IF ACTIVE PACKAGE EXISTS
-        // -----------------------------
-        if (!isEditing && activeForTrainer.isNotEmpty) {
-          final p = activeForTrainer.first;
-
-          // Session-based?
-          if (p.totalSessions > 0 && p.sessionsRemaining > 0) {
-            _toast(
-                "This member still has ${p.sessionsRemaining} unused sessions.\nCannot sell a new package.");
-            return;
-          }
-
-          // Unlimited still active?
-          final now = DateTime.now();
-          if (p.totalSessions == -1 && p.endDate.isAfter(now)) {
-            _toast(
-                "Existing unlimited package is still active.\nCannot add a new one.");
+        // Validate session count
+        int sessions = -1;
+        if (_planType == 0) {
+          sessions = int.tryParse(data['sessions'].toString()) ?? -1;
+          if (sessions <= 0) {
+            _toast("Number of sessions must be a positive number.");
             return;
           }
         }
 
-        // Build package object
-        double price = double.parse(data['price']);
-        int totalSessions =
-            _planType == 0 ? int.parse(data['sessions']) : -1;
+        // Validate dates
+        final start = data['start_date'];
+        final end = data['end_date'];
 
-        DateTime startDate = data['start_date'] ?? DateTime.now();
-        DateTime endDate = data['end_date'];
+        if (start is! DateTime || end is! DateTime) {
+          _toast("Invalid date format.");
+          return;
+        }
+
+        if (end.isBefore(start)) {
+          _toast("End date cannot be before start date.");
+          return;
+        }
+
+        final provider =
+            Provider.of<TrainerPackageProvider>(context, listen: false);
 
         final pkg = TrainerPackage(
           packageId: isEditing ? widget.package!.packageId : null,
-          customerId: customerId,
-          trainerId: trainerId,
-          packageName: data['package_name'] ??
-              (_planType == 0
-                  ? "${data['sessions']} Sessions"
-                  : "Unlimited"),
+          customerId: data['customer_id'],
+          trainerId: data['trainer_id'],
+          packageName: data['package_name'],
           price: price,
-          totalSessions: totalSessions,
+          totalSessions: sessions,
           sessionsUsed: isEditing ? widget.package!.sessionsUsed : 0,
-          startDate: startDate,
-          endDate: endDate,
+          startDate: start,
+          endDate: end,
           status: "Active",
         );
 
-        // -----------------------------
-        // 3. SAVE PACKAGE
-        // -----------------------------
         if (isEditing) {
-          await packageProvider.updatePackage(pkg);
-          _toast("Package Updated!");
+          await provider.updatePackage(pkg);
+          _toast("Package updated!");
         } else {
-          await packageProvider.addPackage(pkg);
-          _toast("Package Activated!");
+          await provider.addPackage(pkg);
+          _toast("Package activated!");
         }
 
         if (mounted) Navigator.pop(context);
-
       } catch (e) {
-        _toast("Unexpected Error: $e");
+        _toast("Unexpected error: $e");
       }
     };
   }
 
-  // HELPER: Show messages
   void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 12),
-      child: Text(
-        title,
-        style: TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 }

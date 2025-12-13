@@ -1,9 +1,9 @@
-// lib/screens/dashboard_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-// Import providers
+// Providers
 import 'package:gym/providers/customer_provider.dart';
 import 'package:gym/providers/membership_provider.dart';
 import 'package:gym/providers/attendance_provider.dart';
@@ -13,7 +13,7 @@ import 'package:gym/providers/payment_provider.dart';
 import 'package:gym/providers/equipment_provider.dart';
 import 'package:gym/auth/auth_provider.dart';
 
-// Import Service and Settings for Backup
+// Backup + Settings
 import 'package:gym/services/backup_service.dart';
 import 'package:gym/screens/settings_screen.dart';
 import 'package:gym/screens/about_screen.dart';
@@ -26,23 +26,40 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  
+  Timer? _autoRefreshTimer;
+  bool _isRefreshing = false;
+
+  final Color _primaryColor = const Color(0xFF2563EB);
+  final Color _bgColor = const Color(0xFFF6F7F9);
+
   @override
   void initState() {
     super.initState();
-    // Check for backup reminder after build
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkBackupReminder();
-      _refreshData(); // Auto-refresh data on load as well
+      _refreshData();
+      _startAutoRefresh();
     });
   }
 
-  // --- BACKUP REMINDER LOGIC ---
+  void _startAutoRefresh() {
+    _autoRefreshTimer =
+        Timer.periodic(const Duration(seconds: 30), (_) => _refreshData());
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  // BACKUP REMINDER
   void _checkBackupReminder() async {
     final backupService = BackupService();
     if (await backupService.needsBackup()) {
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
@@ -53,491 +70,743 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           backgroundColor: Colors.orange[800],
-          duration: const Duration(seconds: 10), // Stay visible longer
-          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 10),
           action: SnackBarAction(
             label: "Backup Now",
             textColor: Colors.white,
             onPressed: () {
               Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (context) => const SettingsScreen())
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
             },
-
           ),
         ),
       );
     }
   }
 
-  // --- DATA REFRESH LOGIC ---
+  // REFRESH ALL PROVIDERS
   Future<void> _refreshData() async {
-    // Trigger fetches for all providers to ensure data is up to date
-    final context = this.context; // Capture context
-    Provider.of<MembershipProvider>(context, listen: false).fetchMemberships();
-    Provider.of<AttendanceProvider>(context, listen: false).fetchAttendanceRecords();
-    Provider.of<SaleProvider>(context, listen: false).fetchSales();
-    Provider.of<PaymentProvider>(context, listen: false).fetchPayments();
-    Provider.of<ClassProvider>(context, listen: false).fetchGymClasses();
-    // Ensure these are loaded
-    Provider.of<CustomerProvider>(context, listen: false).fetchCustomers();
-    Provider.of<EquipmentProvider>(context, listen: false).fetchEquipment();
+    setState(() => _isRefreshing = true);
+
+    await Future.wait([
+      Provider.of<CustomerProvider>(context, listen: false).fetchCustomers(),
+      Provider.of<MembershipProvider>(context, listen: false).fetchMemberships(),
+      Provider.of<AttendanceProvider>(context, listen: false)
+          .fetchAttendanceRecords(),
+      Provider.of<SaleProvider>(context, listen: false).fetchSales(),
+      Provider.of<PaymentProvider>(context, listen: false).fetchPayments(),
+      Provider.of<ClassProvider>(context, listen: false).fetchGymClasses(),
+      Provider.of<EquipmentProvider>(context, listen: false).fetchEquipment(),
+    ]);
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    setState(() => _isRefreshing = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Access Providers
     final membershipProvider = Provider.of<MembershipProvider>(context);
     final attendanceProvider = Provider.of<AttendanceProvider>(context);
     final classProvider = Provider.of<ClassProvider>(context);
     final saleProvider = Provider.of<SaleProvider>(context);
     final paymentProvider = Provider.of<PaymentProvider>(context);
-    
-    // --- LOGIC SECTION ---
-    final today = DateTime.now();
 
-    // 1. Active Members
-    final activeMembersCount = membershipProvider.memberships
-        .where((m) => m.membership.status == 'Active' &&
+    final today = DateTime.now();
+    
+    // LOGIC
+    final activeMembers = membershipProvider.memberships
+        .where((m) =>
+            m.membership.status == "Active" &&
             m.membership.endDate.isAfter(DateTime.now()))
         .length;
 
-    // 2. Today's Sales
-    final todaySales = saleProvider.sales.where((s) =>
-        s.sale.saleDate.year == today.year &&
-        s.sale.saleDate.month == today.month &&
-        s.sale.saleDate.day == today.day);
-    final todaySalesTotal = todaySales.fold(0.0, (sum, sale) => sum + sale.sale.totalAmount);
+    final todaySales = saleProvider.sales
+        .where((s) =>
+            s.sale.saleDate.day == today.day &&
+            s.sale.saleDate.month == today.month &&
+            s.sale.saleDate.year == today.year)
+        .fold(0.0, (sum, s) => sum + s.sale.totalAmount);
 
-    // 3. Today's Membership Payments
-    final todayPayments = paymentProvider.payments.where((p) =>
-        p.payment.paymentDate.year == today.year &&
-        p.payment.paymentDate.month == today.month &&
-        p.payment.paymentDate.day == today.day);
-    final todayPaymentsTotal = todayPayments.fold(0.0, (sum, p) => sum + p.payment.amount);
+    final todayPayments = paymentProvider.payments
+        .where((p) =>
+            p.payment.paymentDate.day == today.day &&
+            p.payment.paymentDate.month == today.month &&
+            p.payment.paymentDate.year == today.year)
+        .fold(0.0, (sum, p) => sum + p.payment.amount);
 
-    // 4. Today's Walk-Ins & Revenue
-    final todayAttendance = attendanceProvider.attendanceRecords.where((a) =>
-        a.attendance.checkinTime.year == today.year &&
-        a.attendance.checkinTime.month == today.month &&
-        a.attendance.checkinTime.day == today.day
-    ).toList();
-    
-    final todayWalkInRevenue = todayAttendance.fold(0.0, (sum, item) => sum + item.attendance.amountPaid);
-
-    // 5. Total Revenue
-    final todaysRevenue = todaySalesTotal + todayPaymentsTotal + todayWalkInRevenue;
-
-    // 6. Today's Classes
-    final todayClasses = classProvider.classes
-        .where((c) =>
-            c.gymClass.scheduleTime.year == today.year &&
-            c.gymClass.scheduleTime.month == today.month &&
-            c.gymClass.scheduleTime.day == today.day)
+    final todayAttendance = attendanceProvider.attendanceRecords
+        .where((a) =>
+            a.attendance.checkinTime.day == today.day &&
+            a.attendance.checkinTime.month == today.month &&
+            a.attendance.checkinTime.year == today.year)
         .length;
-    
-    // NEW: PopScope prevents going back to Login screen when swiping back on Dashboard
-    return PopScope(
-      canPop: false, 
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          toolbarHeight: 70,
-          // This ensures no back button is shown on the Dashboard itself
-          automaticallyImplyLeading: false, 
-          
-          // Home/Refresh Button
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 8.0),
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: Colors.blue),
-                tooltip: "Refresh Data",
-                onPressed: _refreshData,
+
+    final todayWalkInRevenue = attendanceProvider.attendanceRecords
+        .where((a) =>
+            a.attendance.amountPaid > 0 &&
+            a.attendance.date.day == today.day)
+        .fold(0.0, (sum, a) => sum + a.attendance.amountPaid);
+        final todayClasses = classProvider.classes.where((c) {
+  final dt = c.gymClass.scheduleTime;
+  return dt.year == today.year &&
+         dt.month == today.month &&
+         dt.day == today.day;
+}).length;
+
+
+    final totalRevenue = todaySales + todayPayments + todayWalkInRevenue;
+
+    return Scaffold(
+      backgroundColor: _bgColor,
+
+      // ------------------ APP BAR ------------------
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        toolbarHeight: 80,
+        titleSpacing: 18,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Hello, Admin 👋",
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
               ),
             ),
-          ),
-          
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Welcome Back, Admin 👋",
-                style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500),
+            const SizedBox(height: 4),
+            Text(
+              "Dashboard",
+              style: TextStyle(
+                color: Colors.grey[900],
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
               ),
-              const SizedBox(height: 4),
-              Text(
-                "Jay's Fitness",
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[900]),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              color: Colors.grey[800],
-              iconSize: 24,
-              tooltip: "Settings",
-              onPressed: () {
-                Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (context) => const SettingsScreen())
-                );
-              },
             ),
-            IconButton(
-              icon: const Icon(Icons.logout_rounded),
-              color: Colors.red[400],
-              iconSize: 24,
-              tooltip: "Logout",
-              onPressed: () {
-                // Handle logout
-                Provider.of<AuthProvider>(context, listen: false).logout();
-              },
-            ),
-            const SizedBox(width: 8),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: _refreshData,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            color: Colors.grey[700],
+            tooltip: "Settings",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            color: Colors.red[400],
+            tooltip: "Logout",
+            onPressed: () {
+              Provider.of<AuthProvider>(context, listen: false).logout();
+            },
+          ),
+          const SizedBox(width: 12),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 1,
+            color: Colors.grey.withOpacity(0.08),
+          ),
+        ),
+      ),
+
+      // ------------------ BODY ------------------
+      body: RefreshIndicator(
+        color: _primaryColor,
+        onRefresh: _refreshData,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 250),
+          opacity: _isRefreshing ? 0.6 : 1,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ---- REVENUE CARD ----
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF11998e), Color(0xFF38ef7d)], 
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF38ef7d).withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
+                if (_isRefreshing)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _primaryColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(50),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.attach_money, color: Colors.white, size: 24),
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
+                          SizedBox(width: 10),
                           Text(
-                            DateFormat('MMM d, yyyy').format(today),
-                            style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w500),
-                          )
+                            "Updating data...",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(todaysRevenue),
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Total Revenue Today",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Divider(color: Colors.white.withOpacity(0.3)),
-                      const SizedBox(height: 4),
-                      // Breakdown Text
-                      Text(
-                        "Sales: ${NumberFormat.compact().format(todaySalesTotal)} • Payments: ${NumberFormat.compact().format(todayPaymentsTotal)} • Walk-ins: ${NumberFormat.compact().format(todayWalkInRevenue)}",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
+                    ),
+                  ),
+
+                const SizedBox(height: 18),
+
+                // ------------------ REVENUE CARD ------------------
+                _revenueCard(totalRevenue, todaySales, todayPayments,
+                    todayWalkInRevenue),
+
+                const SizedBox(height: 26),
+
+                // ------------------ TODAY OVERVIEW ------------------
+                Text(
+                  "Today’s Overview",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                ),
-                
-                const SizedBox(height: 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _statCard(
+                          "Active Members",
+                          "$activeMembers",
+                          Icons.people_alt_rounded,
+                          _primaryColor,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _statCard(
+                          "Check-ins Today",
+                          "$todayAttendance",
+                          Icons.event_available,
+                          Colors.green,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _statCard(
+  "Today’s Classes",
+  todayClasses.toString(),
+  Icons.fitness_center,
+  Colors.purple,
+),
 
-                // ---- KEY STATS ROW ----
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        title: "Active\nMembers",
-                        value: activeMembersCount.toString(),
-                        icon: Icons.groups_rounded,
-                        color: Colors.blueAccent,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        title: "Check-ins\nToday",
-                        value: todayAttendance.length.toString(),
-                        icon: Icons.fact_check_rounded,
-                        color: Colors.orangeAccent,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        title: "Classes\nToday",
-                        value: todayClasses.toString(),
-                        icon: Icons.fitness_center_rounded,
-                        color: Colors.purpleAccent,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 28),
 
-                // ---- QUICK ACTIONS ----
-                Text("Quick Actions",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-                const SizedBox(height: 16),
+                // ------------------ QUICK ACTIONS ------------------
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildQuickAction(context, "New Member", Icons.person_add_rounded, Colors.blue, "/add_membership"),
-                    _buildQuickAction(context, "Check In", Icons.qr_code_scanner_rounded, Colors.green, "/attendance"),
-                    _buildQuickAction(context, "Book Class", Icons.calendar_month_rounded, Colors.purple, "/add_class_booking"),
-                    _buildQuickAction(context, "New Sale", Icons.shopping_cart_rounded, Colors.orange, "/add_sale"),
+                    Text(
+                      "Quick Actions",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    Text(
+                      "Today • ${DateFormat('MMM d').format(today)}",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                    ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: _quickActionsRow(context),
                 ),
 
                 const SizedBox(height: 28),
 
-                // ---- MANAGEMENT GRID ----
-                Text("Management",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-                const SizedBox(height: 16),
-                _buildManagementGrid(context),
-                
+                // ------------------ MANAGEMENT GRID (kept) ------------------
+                Text(
+                  "Management",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _managementGrid(context),
+
                 const SizedBox(height: 40),
               ],
             ),
           ),
         ),
-        
-        // ---- BOTTOM NAVIGATION ----
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -5),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(context, icon: Icons.dashboard_rounded, label: "Home", isActive: true, route: "/dashboard"),
-                  _buildNavItem(context, icon: Icons.people_alt_rounded, label: "Members", isActive: false, route: "/memberships"),
-                  _buildNavItem(context, icon: Icons.receipt_long_rounded, label: "Expenses", isActive: false, route: "/expenses"),
-                  _buildNavItem(context, icon: Icons.pie_chart_rounded, label: "Reports", isActive: false, route: "/finance_report"),
-                  _buildNavItem(
-  context,
-  icon: Icons.info_outline,
-  label: "About",
-  isActive: false,
-  route: "/about",
-),
-
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
+
+      // ------------------ BOTTOM NAV (kept) ------------------
+      bottomNavigationBar: _bottomNav(context),
     );
   }
 
-  // ---- WIDGET BUILDERS ----
-
-  Widget _buildStatCard({required String title, required String value, required IconData icon, required Color color}) {
+  // ------------------ REVENUE CARD ------------------
+  Widget _revenueCard(
+      double total, double sales, double payments, double walkins) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF11998e), Color(0xFF38ef7d)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
+          BoxShadow(
+            color: Colors.green.withOpacity(0.22),
+            blurRadius: 20,
+            offset: const Offset(0, 14),
+          )
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.attach_money,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Today’s revenue",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('EEEE, MMM d').format(DateTime.now()),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.autorenew_rounded,
+                    color: Colors.white.withOpacity(0.9),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Live",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 18),
+          Text(
+            NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(total),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Total revenue today",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _revenueChip("Sales", sales),
+              const SizedBox(width: 8),
+              _revenueChip("Payments", payments),
+              const SizedBox(width: 8),
+              _revenueChip("Walk-ins", walkins),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _revenueChip(String label, double value) {
+    return Expanded(
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
+                letterSpacing: 0.7,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              "₱${value.toStringAsFixed(0)}",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ------------------ STAT CARD ------------------
+  Widget _statCard(String title, String value, IconData icon, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 20)),
+        const SizedBox(height: 10),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[900],
           ),
-          const SizedBox(height: 12),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.grey[800])),
-          const SizedBox(height: 4),
-          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[500], height: 1.2)),
-        ],
-      ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildQuickAction(BuildContext context, String title, IconData icon, Color color, String route) {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, route),
-      child: Column(
-        children: [
-          Container(
-            width: 65,
-            height: 65,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(18),
+  // ------------------ QUICK ACTIONS ------------------
+  Widget _quickActionsRow(BuildContext ctx) {
+    Widget action(String label, IconData icon, Color color, String route) {
+      return GestureDetector(
+        onTap: () => Navigator.pushNamed(ctx, route),
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(icon, size: 30, color: color),
             ),
-            child: Icon(icon, color: color, size: 30),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[700]),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+            const SizedBox(height: 6),
+            SizedBox(
+              width: 70,
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        action("New Member", Icons.person_add, _primaryColor,
+            "/add_membership"),
+        action("Check In", Icons.qr_code_scanner, Colors.green,
+            "/attendance"),
+        action("Book Class", Icons.calendar_month, Colors.purple,
+            "/add_class_booking"),
+        action("New Sale", Icons.shopping_cart, Colors.orange,
+            "/add_sale"),
+      ],
     );
   }
 
-  Widget _buildManagementGrid(BuildContext context) {
+  // ------------------ MANAGEMENT GRID (kept) ------------------
+  Widget _managementGrid(BuildContext context) {
     final items = [
       {"title": "Customers", "icon": Icons.people, "route": "/customers", "color": Colors.blue},
       {"title": "Plans", "icon": Icons.assignment, "route": "/membership_plans", "color": Colors.blue},
       {"title": "Memberships", "icon": Icons.card_membership, "route": "/memberships", "color": Colors.blue},
-      
+
       {"title": "Check-Ins", "icon": Icons.qr_code, "route": "/attendance", "color": Colors.orange},
       {"title": "Classes", "icon": Icons.fitness_center, "route": "/classes", "color": Colors.orange},
       {"title": "Bookings", "icon": Icons.event_available, "route": "/class_bookings", "color": Colors.orange},
-      {"title": "Trainers", "icon": Icons.sports, "route": "/trainers", "color": Colors.orange},
 
-      // NEW ITEMS FOR TRAINERS
+      {"title": "Trainers", "icon": Icons.sports, "route": "/trainers", "color": Colors.teal},
+      {"title": "Trainer Pay", "icon": Icons.monetization_on, "route": "/trainer_payout", "color": Colors.teal},
       {"title": "PT Packages", "icon": Icons.confirmation_number, "route": "/trainer_packages", "color": Colors.teal},
-      {"title": "Trainer Pay", "icon": Icons.payments, "route": "/trainer_payout", "color": Colors.teal},
+      {"title": "PT Sessions", "icon": Icons.fitness_center, "route": "/pt_sessions", "color": Colors.teal},
 
       {"title": "Products", "icon": Icons.inventory_2, "route": "/products", "color": Colors.green},
       {"title": "Sales", "icon": Icons.point_of_sale, "route": "/sales", "color": Colors.green},
       {"title": "Payments", "icon": Icons.attach_money, "route": "/payments", "color": Colors.green},
-      
-      {"title": "Expenses", "icon": Icons.money_off, "route": "/expenses", "color": Colors.red},
-      {"title": "Equipment", "icon": Icons.fitness_center, "route": "/equipment", "color": Colors.grey},
-     
-      {"title": "PT Sessions", "icon": Icons.fitness_center, "route": "/pt_sessions", "color": Colors.purple},
-      {"title": "About", "icon": Icons.info_outline, "route": "/about", "color": Colors.indigo},
 
+      {"title": "Expenses", "icon": Icons.money_off, "route": "/expenses", "color": Colors.red},
+      {"title": "Equipment", "icon": Icons.settings, "route": "/equipment", "color": Colors.grey},
+      {"title": "About", "icon": Icons.info_outline, "route": "/about", "color": Colors.indigo},
     ];
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.1,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
       ),
-      itemCount: items.length,
-      itemBuilder: (context, i) {
+      itemBuilder: (_, i) {
         final item = items[i];
-        final color = item["color"] as Color;
         return GestureDetector(
-          onTap: () => Navigator.pushNamed(context, item["route"] as String),
+          onTap: () => Navigator.pushNamed(context, item['route'] as String),
           child: Container(
             decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(color: Colors.grey.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 3))
-                ]),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: Colors.grey.withOpacity(0.06),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
             child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      shape: BoxShape.circle
-                    ),
-                    child: Icon(item["icon"] as IconData, size: 24, color: color),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withOpacity(0.1),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 10),
-                  Text(item['title']! as String, textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[800])),
-                ]),
+                  child: Icon(
+                    item['icon'] as IconData,
+                    color: item['color'] as Color,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item['title'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[900],
+                  ),
+                )
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildNavItem(BuildContext context, {required IconData icon, required String label, required bool isActive, required String route}) {
-    final color = isActive ? Colors.black87 : Colors.grey[400];
+  // ------------------ BOTTOM NAV (kept) ------------------
+  Widget _bottomNav(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(
+                context,
+                icon: Icons.dashboard_rounded,
+                label: "Home",
+                isActive: true,
+                route: "/dashboard",
+              ),
+              _buildNavItem(
+                context,
+                icon: Icons.people_alt_rounded,
+                label: "Members",
+                isActive: false,
+                route: "/memberships",
+              ),
+              _buildNavItem(
+                context,
+                icon: Icons.receipt_long_rounded,
+                label: "Expenses",
+                isActive: false,
+                route: "/expenses",
+              ),
+              _buildNavItem(
+                context,
+                icon: Icons.pie_chart_rounded,
+                label: "Reports",
+                isActive: false,
+                route: "/finance_report",
+              ),
+              _buildNavItem(
+                context,
+                icon: Icons.info_outline,
+                label: "About",
+                isActive: false,
+                route: "/about",
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required String route,
+  }) {
+    final color = isActive ? _primaryColor : Colors.grey[500];
+
     return GestureDetector(
       onTap: () {
-        if (!isActive) {
-          // Uses pushNamed to allow back button navigation on destination screens
-          Navigator.pushNamed(context, route); 
-        }
+        if (!isActive) Navigator.pushNamed(context, route);
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 26),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: isActive ? FontWeight.w700 : FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

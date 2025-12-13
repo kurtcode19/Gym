@@ -21,6 +21,7 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
+  bool isSubmitting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +50,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
 
-      // ⭐ PREMIUM APP BAR
       appBar: AppBar(
         title: Text(
           isEditing ? "Edit Product" : "Add Product",
@@ -60,59 +60,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 3,
-        shadowColor: Colors.black26,
-        surfaceTintColor: Colors.transparent,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
 
       body: Column(
         children: [
-          // ⭐ Header Graphic
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 22),
-            decoration: BoxDecoration(
-              color: theme.primaryColor.withOpacity(.08),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3))
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.primaryColor.withOpacity(.15),
-                  ),
-                  child: Icon(
-                    Icons.inventory_2_rounded,
-                    size: 45,
-                    color: theme.primaryColor,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  isEditing ? "Update Product Details" : "Create New Product",
-                  style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87),
-                ),
-              ],
-            ),
-          ),
-
-          // ⭐ FORM CARD
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -135,9 +88,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           name: 'product_name',
                           label: 'Product Name',
                           icon: Icons.label_important,
-                          validator: (v) => (v == null || v.isEmpty)
-                              ? 'Product name cannot be empty'
-                              : null,
+                          validator: (v) =>
+                              (v == null || v.isEmpty) ? 'Required' : null,
                         ),
 
                         const SizedBox(height: 20),
@@ -152,7 +104,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         const SizedBox(height: 14),
                         _textField(
                           name: 'description',
-                          label: 'Description (Optional)',
+                          label: 'Description',
                           icon: Icons.description_outlined,
                           maxLines: 3,
                         ),
@@ -167,10 +119,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           icon: Icons.payments_outlined,
                           keyboard: TextInputType.number,
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Required';
-                            if (double.tryParse(v) == null) {
-                              return 'Invalid number';
-                            }
+                            if (v == null || v.isEmpty) return "Required";
+                            final val = double.tryParse(v);
+                            if (val == null) return "Invalid number";
+                            if (val < 0) return "Cannot be negative";
                             return null;
                           },
                         ),
@@ -182,10 +134,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           icon: Icons.inventory,
                           keyboard: TextInputType.number,
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Required';
-                            if (int.tryParse(v) == null) {
-                              return 'Invalid number';
-                            }
+                            if (v == null || v.isEmpty) return "Required";
+                            final val = int.tryParse(v);
+                            if (val == null) return "Invalid number";
+                            if (val < 0) return "Cannot be negative";
                             return null;
                           },
                         ),
@@ -198,16 +150,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                         const SizedBox(height: 35),
 
-                        // ⭐ SUBMIT BUTTON
                         ElevatedButton(
-                          onPressed: () => _submit(context, isEditing),
+                          onPressed: isSubmitting
+                              ? null
+                              : () => _submit(context, isEditing),
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size.fromHeight(55),
                             backgroundColor: theme.primaryColor,
-                            elevation: 3,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                                borderRadius: BorderRadius.circular(14)),
                           ),
                           child: Text(
                             isEditing ? "Save Changes" : "Add Product",
@@ -216,7 +167,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -230,9 +181,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // ⭐ Reusable Components
+  // Section Title
   // ---------------------------------------------------------------------------
-
   Widget _sectionTitle(String text) {
     return Text(
       text,
@@ -244,6 +194,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Text Field Component
+  // ---------------------------------------------------------------------------
   Widget _textField({
     required String name,
     required String label,
@@ -261,7 +214,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.grey[600]),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Colors.grey[200],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -270,14 +223,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  Widget _categoryDropdown(ProductCategoryProvider categoryProvider) {
+  // ---------------------------------------------------------------------------
+  // Category Dropdown
+  // ---------------------------------------------------------------------------
+  Widget _categoryDropdown(ProductCategoryProvider provider) {
     return FormBuilderDropdown<String>(
       name: 'category_id',
       decoration: InputDecoration(
         labelText: "Category",
         prefixIcon: const Icon(Icons.category_outlined),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Colors.grey[200],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -285,18 +241,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ),
       items: [
         const DropdownMenuItem(value: null, child: Text("Uncategorized")),
-        ...categoryProvider.categories
-            .where((cat) => cat.status == "Active")
-            .map(
-              (cat) => DropdownMenuItem(
-                value: cat.categoryId,
-                child: Text(cat.categoryName),
-              ),
-            )
+        ...provider.categories
+            .where((c) => c.status == "Active")
+            .map((c) => DropdownMenuItem(
+                  value: c.categoryId,
+                  child: Text(c.categoryName),
+                )),
       ],
+      validator: (v) {
+        // example validation: require category selection
+        return null;
+      },
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Status Dropdown
+  // ---------------------------------------------------------------------------
   Widget _statusDropdown() {
     return FormBuilderDropdown<String>(
       name: 'status',
@@ -304,7 +265,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         labelText: 'Status',
         prefixIcon: const Icon(Icons.info_outline),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Colors.grey[200],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -319,46 +280,81 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // ⭐ Submit Logic
+  // SUBMIT WITH ERROR TRAPPING
   // ---------------------------------------------------------------------------
   void _submit(BuildContext context, bool isEditing) async {
-    if (_formKey.currentState?.saveAndValidate() ?? false) {
-      final data = _formKey.currentState!.value;
+    if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
+      _toastError(context, "Please correct the highlighted errors.");
+      return;
+    }
 
-      final newProduct = Product(
+    setState(() => isSubmitting = true);
+
+    try {
+      final data = _formKey.currentState!.value;
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+
+      // 🔴 Check for duplicate product name (if adding OR renaming)
+      final exists = provider.products.any((p) =>
+          p.product.productName.trim().toLowerCase() ==
+              data['product_name'].trim().toLowerCase() &&
+          p.product.productId != widget.product?.productId);
+
+      if (exists) {
+        _toastError(context, "A product with this name already exists.");
+        setState(() => isSubmitting = false);
+        return;
+      }
+
+      // Construct product object
+      final product = Product(
         productId: isEditing ? widget.product!.productId : null,
         productName: data['product_name'],
         categoryId: data['category_id'],
         description: data['description'],
-        unitPrice: double.tryParse(data['unit_price']) ?? 0,
-        stockQuantity: int.tryParse(data['stock_quantity']) ?? 0,
+        unitPrice: double.parse(data['unit_price']),
+        stockQuantity: int.parse(data['stock_quantity']),
         status: data['status'],
       );
 
-      final provider =
-          Provider.of<ProductProvider>(context, listen: false);
-
+      // SAVE
       if (isEditing) {
-        await provider.updateProduct(newProduct);
-        _toast(context, "${newProduct.productName} updated!");
+        await provider.updateProduct(product);
+        _toastSuccess(context, "Product updated!");
       } else {
-        await provider.addProduct(newProduct);
-        _toast(context, "${newProduct.productName} added!");
+        await provider.addProduct(product);
+        _toastSuccess(context, "Product added!");
       }
 
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      _toastError(context, "Error saving product: $e");
+    } finally {
+      setState(() => isSubmitting = false);
     }
   }
 
-  void _toast(BuildContext context, String msg) {
+  // ---------------------------------------------------------------------------
+  // TOAST HELPERS
+  // ---------------------------------------------------------------------------
+  void _toastSuccess(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.green.shade600,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _toastError(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red.shade600,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

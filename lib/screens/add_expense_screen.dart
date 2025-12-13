@@ -1,4 +1,5 @@
 // lib/screens/add_expense_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:provider/provider.dart';
@@ -21,14 +22,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   InputDecoration _fieldDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, color: Colors.blueGrey),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      prefixIcon: Icon(icon, color: Colors.redAccent),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
-      filled: true,
-      fillColor: Colors.grey.shade50,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
     );
   }
 
@@ -36,179 +41,233 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Widget build(BuildContext context) {
     final isEditing = widget.expense != null;
 
-    Map<String, dynamic> initialValues = {};
-    if (isEditing) {
-      initialValues = {
-        'category': widget.expense!.category,
-        'description': widget.expense!.description,
-        'amount': widget.expense!.amount.toString(),
-        'expense_date': widget.expense!.expenseDate,
-      };
-    } else {
-      initialValues = {
-        'amount': '',
-        'expense_date': DateTime.now(),
-      };
-    }
+    final initialValues = isEditing
+        ? {
+            'category': widget.expense!.category,
+            'description': widget.expense!.description,
+            'amount': widget.expense!.amount.toString(),
+            'expense_date': widget.expense!.expenseDate,
+          }
+        : {
+            'amount': '',
+            'expense_date': DateTime.now(),
+          };
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF5F6FA),
+
+      // ------------------------------- PREMIUM APP BAR -------------------------------
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Expense' : 'Record Expense'),
+        backgroundColor: Colors.white,
+        elevation: 8,
+        shadowColor: Colors.black.withOpacity(.12),
         centerTitle: true,
-        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(
+          isEditing ? "Edit Expense" : "Record Expense",
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
+
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: FormBuilder(
-            key: _formKey,
-            initialValue: initialValues,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader('Classification'),
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.grey.shade200)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        FormBuilderDropdown<String>(
-                          name: 'category',
-                          decoration: _fieldDecoration('Category', Icons.category),
-                          validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-                          items: const [
-                            DropdownMenuItem(value: 'Rent', child: Text('Rent')),
-                            DropdownMenuItem(value: 'Utilities', child: Text('Utilities')),
-                            DropdownMenuItem(value: 'Salaries', child: Text('Salaries')),
-                            DropdownMenuItem(value: 'Maintenance', child: Text('Maintenance')),
-                            DropdownMenuItem(value: 'Supplies', child: Text('Supplies')),
-                            DropdownMenuItem(value: 'Marketing', child: Text('Marketing')),
-                            DropdownMenuItem(value: 'Other', child: Text('Other')),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        FormBuilderTextField(
-                          name: 'description',
-                          decoration: _fieldDecoration('Description (Optional)', Icons.description),
-                          maxLines: 2,
-                        ),
-                      ],
-                    ),
+        padding: const EdgeInsets.all(20),
+        child: FormBuilder(
+          key: _formKey,
+          initialValue: initialValues,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionHeader("Classification"),
+
+              // ---------------------------- CLASSIFICATION CARD ----------------------------
+              Card(
+                elevation: 3,
+                shadowColor: Colors.black.withOpacity(.05),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      FormBuilderDropdown<String>(
+                        name: 'category',
+                        decoration: _fieldDecoration('Category', Icons.category),
+                        items: const [
+                          DropdownMenuItem(value: 'Rent', child: Text('Rent')),
+                          DropdownMenuItem(
+                              value: 'Utilities', child: Text('Utilities')),
+                          DropdownMenuItem(
+                              value: 'Salaries', child: Text('Salaries')),
+                          DropdownMenuItem(
+                              value: 'Maintenance', child: Text('Maintenance')),
+                          DropdownMenuItem(
+                              value: 'Supplies', child: Text('Supplies')),
+                          DropdownMenuItem(
+                              value: 'Marketing', child: Text('Marketing')),
+                          DropdownMenuItem(value: 'Other', child: Text('Other')),
+                        ],
+                        validator: (v) =>
+                            v == null || v.isEmpty ? "Required" : null,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      FormBuilderTextField(
+                        name: 'description',
+                        maxLines: 2,
+                        decoration: _fieldDecoration(
+                            'Description (Optional)', Icons.description),
+                      ),
+                    ],
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 24),
-                _buildSectionHeader('Cost & Date'),
+              const SizedBox(height: 28),
+              _sectionHeader("Cost & Date"),
 
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.grey.shade200)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        FormBuilderTextField(
-                          name: 'amount',
-                          decoration: _fieldDecoration('Amount', Icons.attach_money),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Required';
-                            if (double.tryParse(value) == null) return 'Invalid number';
-                            if (double.parse(value) <= 0) return 'Must be positive';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        FormBuilderDateTimePicker(
-                          name: 'expense_date',
-                          decoration: _fieldDecoration('Date', Icons.calendar_today),
-                          inputType: InputType.date,
-                          format: DateFormat('yyyy-MM-dd'),
-                          validator: (value) => value == null ? 'Required' : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (_formKey.currentState?.saveAndValidate() ?? false) {
-                        final data = _formKey.currentState!.value;
-                        final newExpense = Expense(
-                          expenseId: isEditing ? widget.expense!.expenseId : null,
-                          category: data['category'],
-                          description: data['description'],
-                          amount: double.parse(data['amount']),
-                          expenseDate: data['expense_date'],
-                        );
-
-                        try {
-                          if (isEditing) {
-                            await Provider.of<ExpenseProvider>(context, listen: false).updateExpense(newExpense);
-                            if (context.mounted) _showSnackBar('Expense updated successfully!');
-                          } else {
-                            await Provider.of<ExpenseProvider>(context, listen: false).addExpense(newExpense);
-                            if (context.mounted) _showSnackBar('Expense added successfully!');
+              // --------------------------- COST & DATE CARD ---------------------------
+              Card(
+                elevation: 3,
+                shadowColor: Colors.black.withOpacity(.05),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      FormBuilderTextField(
+                        name: 'amount',
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: _fieldDecoration('Amount', Icons.attach_money),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Required';
                           }
-                          if (context.mounted) Navigator.of(context).pop();
-                        } catch (e) {
-                          if (context.mounted) _showSnackBar('Error: $e', isError: true);
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent, // Red for expenses
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 2,
-                    ),
-                    child: Text(
-                      isEditing ? 'Save Changes' : 'Record Expense',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
+                          if (double.tryParse(value) == null) {
+                            return 'Invalid amount';
+                          }
+                          if (double.parse(value) <= 0) {
+                            return 'Must be positive';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      FormBuilderDateTimePicker(
+                        name: 'expense_date',
+                        decoration:
+                            _fieldDecoration('Date', Icons.calendar_today),
+                        inputType: InputType.date,
+                        format: DateFormat('yyyy-MM-dd'),
+                        validator: (v) => v == null ? "Required" : null,
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // ------------------------------ SUBMIT BUTTON ------------------------------
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState?.saveAndValidate() ?? false) {
+                      final data = _formKey.currentState!.value;
+
+                      final newExpense = Expense(
+                        expenseId: isEditing ? widget.expense!.expenseId : null,
+                        category: data['category'],
+                        description: data['description'],
+                        amount: double.parse(data['amount']),
+                        expenseDate: data['expense_date'],
+                      );
+
+                      try {
+                        final provider = Provider.of<ExpenseProvider>(context,
+                            listen: false);
+
+                        if (isEditing) {
+                          await provider.updateExpense(newExpense);
+                          _showSnackBar("Expense updated successfully!");
+                        } else {
+                          await provider.addExpense(newExpense);
+                          _showSnackBar("Expense added successfully!");
+                        }
+
+                        if (context.mounted) Navigator.pop(context);
+                      } catch (e) {
+                        _showSnackBar("Error: $e", isError: true);
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(
+                    isEditing ? "Save Changes" : "Record Expense",
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  // ---------------------------- SECTION HEADER ----------------------------
+  Widget _sectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 12),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey[700],
-          letterSpacing: 0.5,
-        ),
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: Colors.redAccent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
+  // ---------------------------- SNACKBAR ----------------------------
+  void _showSnackBar(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(msg),
         backgroundColor: isError ? Colors.red : Colors.green,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

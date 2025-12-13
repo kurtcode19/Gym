@@ -13,13 +13,14 @@ class SalesScreen extends StatefulWidget {
 }
 
 class _SalesScreenState extends State<SalesScreen> {
-  // FILTER STATE
   bool _filtersExpanded = false;
   String _quickFilter = "All";
   DateTimeRange? _selectedDateRange;
   String? _selectedPaymentMethod;
 
-  // QUICK FILTER PRESETS -------------------------------------------------------
+  // ------------------------------------------------------------
+  // QUICK FILTER LOGIC
+  // ------------------------------------------------------------
   void _applyQuickFilter(String filter) {
     final now = DateTime.now();
     DateTime start;
@@ -41,7 +42,6 @@ class _SalesScreenState extends State<SalesScreen> {
             .subtract(Duration(days: now.weekday - 1));
         end = start.add(const Duration(days: 6, hours: 23, minutes: 59));
       } else {
-        // This Month
         start = DateTime(now.year, now.month, 1);
         end = DateTime(now.year, now.month + 1, 1)
             .subtract(const Duration(seconds: 1));
@@ -51,7 +51,6 @@ class _SalesScreenState extends State<SalesScreen> {
     });
   }
 
-  // PICK DATE RANGE ------------------------------------------------------------
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
 
@@ -60,8 +59,7 @@ class _SalesScreenState extends State<SalesScreen> {
       firstDate: DateTime(now.year - 3),
       lastDate: DateTime(now.year + 3),
       initialDateRange: _selectedDateRange ??
-          DateTimeRange(
-              start: DateTime(now.year, now.month, 1), end: now),
+          DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
     );
 
     if (picked != null) {
@@ -72,37 +70,18 @@ class _SalesScreenState extends State<SalesScreen> {
     }
   }
 
-  // PICK PAYMENT METHOD --------------------------------------------------------
   Future<void> _pickPaymentMethod() async {
     final method = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
         title: const Text("Select Payment Method"),
         children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, null),
-            child: const Text("Any"),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, "Cash"),
-            child: const Text("Cash"),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, "Credit Card"),
-            child: const Text("Credit Card"),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, "Debit Card"),
-            child: const Text("Debit Card"),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, "Bank Transfer"),
-            child: const Text("Bank Transfer"),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, "Other"),
-            child: const Text("Other"),
-          ),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, null), child: const Text("Any")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, "Cash"), child: const Text("Cash")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, "Credit Card"), child: const Text("Credit Card")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, "Debit Card"), child: const Text("Debit Card")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, "Bank Transfer"), child: const Text("Bank Transfer")),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, "Other"), child: const Text("Other")),
         ],
       ),
     );
@@ -113,11 +92,12 @@ class _SalesScreenState extends State<SalesScreen> {
     });
   }
 
-  // FILTER VALIDATION ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // FILTER CHECK LOGIC
+  // ------------------------------------------------------------
   bool _saleMatchesFilters(DetailedSale ds) {
     final sale = ds.sale;
 
-    // DATE RANGE
     if (_selectedDateRange != null) {
       if (sale.saleDate.isBefore(_selectedDateRange!.start) ||
           sale.saleDate.isAfter(_selectedDateRange!.end)) {
@@ -125,110 +105,38 @@ class _SalesScreenState extends State<SalesScreen> {
       }
     }
 
-    // PAYMENT METHOD
     if (_selectedPaymentMethod != null &&
-        sale.paymentMethod != _selectedPaymentMethod) return false;
+        sale.paymentMethod != _selectedPaymentMethod) {
+      return false;
+    }
 
     return true;
   }
 
-  // TOP PRODUCTS REPORT --------------------------------------------------------
-  Widget _buildTopProductsReport(List<DetailedSale> sales) {
-    final Map<String, Map<String, dynamic>> stats = {};
+  // ------------------------------------------------------------
+  // PREMIUM UI HELPERS
+  // ------------------------------------------------------------
+  Widget _quickFilterChip(String label) {
+    final selected = _quickFilter == label;
 
-    for (var s in sales) {
-      for (var item in s.items) {
-        String name = item.productName;
-        int qty = item.saleItem.quantity;
-        double value = qty * item.saleItem.unitPrice;
-
-        stats.putIfAbsent(name, () => {"name": name, "qty": 0, "value": 0.0});
-        stats[name]!["qty"] += qty;
-        stats[name]!["value"] += value;
-      }
-    }
-
-    final top = stats.values.toList()
-      ..sort((a, b) => b["qty"].compareTo(a["qty"]));
-    final top3 = top.take(3).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Top Products",
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.grey[700])),
-        const SizedBox(height: 10),
-
-        if (top3.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300)),
-            child: const Text(
-              "No product data for selected filters.",
-              style: TextStyle(color: Colors.grey),
-            ),
-          )
-        else
-          Column(
-            children: top3.map((p) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12)),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child:
-                          const Icon(Icons.inventory_2, color: Colors.blue),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(p["name"],
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                            Text("Qty Sold: ${p["qty"]}",
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 12)),
-                          ]),
-                    ),
-                    Text(
-                      "₱${p["value"].toStringAsFixed(2)}",
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green),
-                    )
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-      ],
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: selected ? Colors.white : Colors.black87,
+        ),
+      ),
+      selected: selected,
+      selectedColor: Colors.blueAccent,
+      backgroundColor: Colors.white,
+      elevation: selected ? 4 : 0,
+      pressElevation: 2,
+      onSelected: (_) => _applyQuickFilter(label),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     );
   }
 
-  // FILTER LABEL ---------------------------------------------------------------
-  String getFilterLabel() {
-    if (_quickFilter != "Custom") return _quickFilter;
-    return "Custom";
-  }
-
-  // INLINE FILTER BUTTON --------------------------------------------------------
   Widget _inlineFilterButton({
     required IconData icon,
     required String label,
@@ -238,98 +146,163 @@ class _SalesScreenState extends State<SalesScreen> {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.white,
-            border: Border.all(color: Colors.grey.shade300)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade300),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            )
+          ],
+        ),
         child: Row(
           children: [
-            Icon(icon, size: 18),
-            const SizedBox(width: 8),
-            Text("$label: ",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            Expanded(child: Text(value)),
-            const Icon(Icons.chevron_right, size: 16),
+            Icon(icon, size: 18, color: Colors.blueAccent),
+            const SizedBox(width: 10),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                value,
+                style: TextStyle(color: Colors.grey.shade700),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
           ],
         ),
       ),
     );
   }
 
-  // QUICK FILTER CHIP ----------------------------------------------------------
-  Widget _quickFilterChip(String label) {
-    final active = _quickFilter == label;
+  // ------------------------------------------------------------
+  // TOP PRODUCTS REPORT
+  // ------------------------------------------------------------
+  Widget _buildTopProductsReport(List<DetailedSale> sales) {
+    final Map<String, Map<String, dynamic>> stats = {};
 
-    return ChoiceChip(
-      selected: active,
-      label: Text(label,
-          style: TextStyle(
-              color: active ? Colors.white : Colors.black)),
-      selectedColor: Colors.blue,
-      onSelected: (_) => _applyQuickFilter(label),
-    );
-  }
+    for (var s in sales) {
+      for (var item in s.items) {
+        final name = item.productName;
+        final qty = item.saleItem.quantity;
+        final value = qty * item.saleItem.unitPrice;
 
-  // STAT CARD ------------------------------------------------------------------
-  Widget _statCard(String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(.08),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2))
-            ]),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Icon(icon, size: 18, color: color),
-              const Spacer(),
-              Text(value,
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: color))
-            ]),
-            const SizedBox(height: 4),
-            Text(title, style: TextStyle(color: Colors.grey[600])),
-          ],
+        stats.putIfAbsent(name, () => {"qty": 0, "value": 0, "name": name});
+        stats[name]!["qty"] += qty;
+        stats[name]!["value"] += value;
+      }
+    }
+
+    final top3 = stats.values.toList()
+      ..sort((a, b) => b["qty"].compareTo(a["qty"]))
+      ..take(3);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Top Products",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
-      ),
+        const SizedBox(height: 12),
+
+        if (stats.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: const Text("No product data available",
+                style: TextStyle(color: Colors.grey)),
+          )
+        else
+          Column(
+            children: top3.map((p) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    )
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withOpacity(.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.inventory_2_rounded,
+                          size: 22, color: Colors.blueAccent),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(p["name"],
+                                style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700)),
+                            Text("Qty Sold: ${p["qty"]}",
+                                style: TextStyle(color: Colors.grey.shade700)),
+                          ]),
+                    ),
+                    Text(
+                      "₱${p["value"].toStringAsFixed(2)}",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.green),
+                    )
+                  ],
+                ),
+              );
+            }).toList(),
+          )
+      ],
     );
   }
 
-  // SALE CARD ------------------------------------------------------------------
-  Widget _saleCard(
-      BuildContext context, DetailedSale ds, SaleProvider sp) {
+  // ------------------------------------------------------------
+  // SALE CARD
+  // ------------------------------------------------------------
+  Widget _saleCard(BuildContext context, DetailedSale ds, SaleProvider sp) {
     final sale = ds.sale;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 3,
+      shadowColor: Colors.black.withOpacity(.06),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: ListTile(
         onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
                 builder: (_) => AddSaleScreen(detailedSale: ds))),
         leading: CircleAvatar(
-          radius: 24,
-          backgroundColor:
-              Theme.of(context).colorScheme.primary.withOpacity(.15),
+          radius: 26,
+          backgroundColor: Colors.blueAccent.withOpacity(.15),
           child: Text(
             DateFormat('dd').format(sale.saleDate),
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary),
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.blueAccent),
           ),
         ),
         title: Text(
           "${ds.customerFirstName} ${ds.customerLastName}",
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
           ds.items.map((i) => i.productName).join(", "),
@@ -337,17 +310,17 @@ class _SalesScreenState extends State<SalesScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         trailing: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               NumberFormat.currency(locale: "en_PH", symbol: "₱")
                   .format(sale.totalAmount),
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.blueAccent),
             ),
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+              icon: const Icon(Icons.delete_outline,
+                  color: Colors.red, size: 22),
               onPressed: () => _confirmDelete(context, sp, sale.saleId),
             )
           ],
@@ -356,12 +329,15 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
-  // DELETE CONFIRM -------------------------------------------------------------
-  void _confirmDelete(
-      BuildContext context, SaleProvider sp, String saleId) {
+  // ------------------------------------------------------------
+  // CONFIRM DELETE
+  // ------------------------------------------------------------
+  void _confirmDelete(BuildContext context, SaleProvider sp, String saleId) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Delete Sale"),
         content: const Text("Are you sure you want to delete this sale?"),
         actions: [
@@ -375,25 +351,84 @@ class _SalesScreenState extends State<SalesScreen> {
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text("Delete"),
-          ),
+          )
         ],
       ),
     );
   }
 
-  // MAIN UI --------------------------------------------------------------------
+  // ------------------------------------------------------------
+  // MISSING METHOD — FIXED HERE 🎉
+  // ------------------------------------------------------------
+  Widget statCard(String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.06),
+              blurRadius: 6,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20, color: color),
+                const Spacer(),
+                Text(
+                  value,
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                      fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------
+  // MAIN UI
+  // ------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Sales History"),
-        backgroundColor:
-            Theme.of(context).colorScheme.primaryContainer,
-        elevation: 0,
+        elevation: 8,
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        shadowColor: Colors.black.withOpacity(.15),
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text(
+          "Sales History",
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
+        ),
       ),
 
       body: Consumer<SaleProvider>(
-        builder: (context, saleProvider, child) {
+        builder: (context, saleProvider, _) {
           final filtered =
               saleProvider.sales.where(_saleMatchesFilters).toList();
 
@@ -403,134 +438,126 @@ class _SalesScreenState extends State<SalesScreen> {
 
           return Column(
             children: [
-              // SEARCH + FILTER BAR --------------------------------------------
-              // SEARCH + FILTER BAR --------------------------------------------
-Container(
-  padding: const EdgeInsets.all(16),
-  decoration: BoxDecoration(
-    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(.1),
-    borderRadius: const BorderRadius.only(
-      bottomLeft: Radius.circular(16),
-      bottomRight: Radius.circular(16),
-    ),
-  ),
-  child: Column(
-    children: [
-      Row(
-        children: [
-          // SEARCH FIELD ---------------------------------------------------
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: "Search sales...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+              // ------------------------------------------------------------
+              // SEARCH + FILTER UI
+              // ------------------------------------------------------------
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFEEF4FF), Color(0xFFE9F5FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(22),
+                    bottomRight: Radius.circular(22),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: "Search sales...",
+                              prefixIcon: const Icon(Icons.search),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: saleProvider.searchSales,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        InkWell(
+                          onTap: () => setState(
+                              () => _filtersExpanded = !_filtersExpanded),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: _filtersExpanded
+                                    ? Colors.blue
+                                    : Colors.grey.shade300,
+                                width: 1.3,
+                              ),
+                            ),
+                            child: Icon(
+                              _filtersExpanded
+                                  ? Icons.filter_list_off
+                                  : Icons.filter_list,
+                              color: _filtersExpanded
+                                  ? Colors.blue
+                                  : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (_filtersExpanded) ...[
+                      const SizedBox(height: 16),
+
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _quickFilterChip("All"),
+                          _quickFilterChip("Today"),
+                          _quickFilterChip("This Week"),
+                          _quickFilterChip("This Month"),
+                        ],
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      _inlineFilterButton(
+                        icon: Icons.date_range,
+                        label: "Date Range",
+                        value: _selectedDateRange == null
+                            ? "Any"
+                            : "${DateFormat('MMM d').format(_selectedDateRange!.start)} - "
+                                "${DateFormat('MMM d').format(_selectedDateRange!.end)}",
+                        onTap: _pickDateRange,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      _inlineFilterButton(
+                        icon: Icons.payment,
+                        label: "Payment",
+                        value: _selectedPaymentMethod ?? "Any",
+                        onTap: _pickPaymentMethod,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              onChanged: (query) => saleProvider.searchSales(query),
-            ),
-          ),
 
-          const SizedBox(width: 10),
+              const SizedBox(height: 16),
 
-          // FILTER BUTTON --------------------------------------------------
-          InkWell(
-            onTap: () => setState(() => _filtersExpanded = !_filtersExpanded),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(
-                  color: _filtersExpanded ? Colors.blue : Colors.grey.shade300,
-                  width: 1.3,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                _filtersExpanded ? Icons.filter_list_off : Icons.filter_list,
-                color: _filtersExpanded ? Colors.blue : Colors.black87,
-                size: 22,
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      // COLLAPSIBLE FILTER CONTENT ----------------------------------------
-      if (_filtersExpanded) ...[
-        const SizedBox(height: 16),
-
-        // QUICK FILTERS ----------------------------------------------------
-        Wrap(
-          spacing: 6,
-          children: [
-            _quickFilterChip("All"),
-            _quickFilterChip("Today"),
-            _quickFilterChip("This Week"),
-            _quickFilterChip("This Month"),
-          ],
-        ),
-
-        const SizedBox(height: 14),
-
-        // ADVANCED FILTERS -------------------------------------------------
-        _inlineFilterButton(
-          icon: Icons.date_range,
-          label: "Date Range",
-          value: _selectedDateRange == null
-              ? "Any"
-              : "${DateFormat('MMM d').format(_selectedDateRange!.start)} - ${DateFormat('MMM d').format(_selectedDateRange!.end)}",
-          onTap: _pickDateRange,
-        ),
-
-        const SizedBox(height: 8),
-
-        _inlineFilterButton(
-          icon: Icons.payment,
-          label: "Payment",
-          value: _selectedPaymentMethod ?? "Any",
-          onTap: _pickPaymentMethod,
-        ),
-
-        const SizedBox(height: 10),
-
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            "Active filter: ${getFilterLabel()}",
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.outline,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ]
-    ],
-  ),
-),
-
-
-              const SizedBox(height: 12),
-
-              // STATS ----------------------------------------------------------
+              // ------------------------------------------------------------
+              // STATS ROW
+              // ------------------------------------------------------------
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    _statCard("Total Sales", totalSales.toString(),
+                    statCard("Total Sales", "$totalSales",
                         Icons.receipt_long, Colors.blue),
-                    const SizedBox(width: 10),
-                    _statCard(
+                    const SizedBox(width: 12),
+                    statCard(
                       "Revenue",
                       NumberFormat.currency(
                               locale: "en_PH", symbol: "₱")
                           .format(totalRevenue),
-                      Icons.monetization_on,
+                      Icons.payments_rounded,
                       Colors.green,
                     ),
                   ],
@@ -539,7 +566,9 @@ Container(
 
               const SizedBox(height: 20),
 
-              // TOP PRODUCTS ---------------------------------------------------
+              // ------------------------------------------------------------
+              // TOP PRODUCTS
+              // ------------------------------------------------------------
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildTopProductsReport(filtered),
@@ -547,18 +576,19 @@ Container(
 
               const SizedBox(height: 12),
 
-              // SALES LIST -----------------------------------------------------
+              // ------------------------------------------------------------
+              // SALES LIST
+              // ------------------------------------------------------------
               Expanded(
                 child: saleProvider.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : filtered.isEmpty
-                        ? const Center(child: Text("No matching sales"))
+                        ? const Center(child: Text("No sales found."))
                         : ListView.builder(
                             padding: const EdgeInsets.all(16),
                             itemCount: filtered.length,
-                            itemBuilder: (context, i) =>
-                                _saleCard(context, filtered[i],
-                                    saleProvider),
+                            itemBuilder: (_, i) =>
+                                _saleCard(context, filtered[i], saleProvider),
                           ),
               ),
             ],
